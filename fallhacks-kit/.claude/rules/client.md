@@ -1,0 +1,15 @@
+---
+paths:
+  - "client/**"
+---
+- Lane B must not edit `client/src/mumu/**`, `client/public/mumu/**` or `client/public/audio/mumu/**` (Lane C's). Talk to Mumu only through `bridge.ts` and the `data-mumu-floor` / `data-mumu-ledge` / `data-mumu-avoid` attributes. `client/src/db/db.ts` is contract-owned: MAIN changes it.
+- Pixel style per `docs/DESIGN.md`: palette tokens only, integer-scaled sprites, `image-rendering: pixelated`, covers pixelated through a small canvas. **Comic pages are never pixelated.**
+- Dexie (with live queries) is the single source of truth for persistent data. Don't mirror DB data into a separate state store; React state is for transient UI only.
+- All playback goes through the audio engine module. Components never create Howl instances directly.
+- The scheduler is pure (state + inputs → state + actions) and unit-tested. Howler and DOM code live in a thin adapter around it.
+- Howler with blob URLs needs `format: ['mp3']`. Revoke object URLs when a chapter closes.
+- Convert between page fractions and pixels in one helper module only (see CONTRACT §1).
+- Storing a package (from the API or from `/dev`) goes through one function in a single Dexie transaction (CONTRACT §6).
+- Design mobile-first at 390 px wide. Colors and fonts come from the theme tokens in `docs/DESIGN.md`; no ad-hoc hex values. Dark mode uses the `dark` class.
+- vite-plugin-pwa: service worker off in dev; `registerType: 'autoUpdate'`; precache `**/*.{js,css,html,svg,png,webp,woff2,mp3}`; precache file size limit 5 MB.
+- The API base URL comes from `VITE_API_URL`.

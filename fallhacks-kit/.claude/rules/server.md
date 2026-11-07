@@ -1,0 +1,13 @@
+---
+paths:
+  - "server/**"
+---
+- The pipeline stages are separate modules: slice → vision → merge → reason → cast → tts → package. The fixture script and the jobs API call the same stage functions. There is only one pipeline.
+- Validate every Gemini response with the `shared` zod schemas. If a response fails validation, retry once. If it fails again, fail the job with a message naming the stage and segment.
+- On HTTP 429 or 5xx, retry with exponential backoff (1 s, 2 s, 4 s), then fail the job with the error text. Never return partial results silently.
+- Concurrency comes from env (`VISION_CONCURRENCY`, `TTS_CONCURRENCY`), enforced with p-limit.
+- Use the disk cache for vision, reasoning and TTS, with keys per CONTRACT §9. The directory comes from `CACHE_DIR` and is shared by all checkouts, so write atomically (temp file + rename). Log every call as `cache hit` or `API call` so cache behaviour can be verified.
+- Model IDs, voices and limits come from env or `shared` config. Never log keys or full request bodies; logging image sizes and counts is fine.
+- Do image work with sharp and encode audio with ffmpeg-static (PCM → mono MP3 ~64 kbps). Confirm the TTS output format with the docs-researcher agent before writing the encoder.
+- The fixture CLI accepts `--cast <package.json>` (repeatable) and builds the known cast from those packages' `newCharacters`. This is how chapter-to-chapter consistency gets tested.
+- Update job progress `message`s with counts (e.g. "Analyzing segment 7/19", "Voicing 23/61 lines").

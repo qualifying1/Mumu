@@ -1,0 +1,13 @@
+---
+paths:
+  - "client/src/mumu/**"
+  - "client/public/mumu/**"
+  - "client/public/audio/mumu/**"
+---
+- Lane C owns these folders. Don't edit anything outside them. Talk to the rest of the app only through `bridge.ts` (CONTRACT §10), the `data-mumu-*` attributes, and `client/src/db/db.ts` (read `settings`, read and write `readingLog`). If you need more, stop and ask MAIN for a contract change.
+- The behaviour engine is pure (state + inputs + dt → state + effects) and unit-tested. The renderer and pointer handling are thin adapters around it.
+- One manifest (`sprites.ts`) holds the frame size, frames, fps and loop per animation. Swapping art changes only PNG files and this manifest.
+- Render at an integer scale (×3 at ≥ 768 px wide, ×2 below) with `image-rendering: pixelated`. Mirror for left-facing. Swinging is a CSS rotation of `held`.
+- The overlay layer is `pointer-events: none`; only Mumu's element takes pointer events, with `touch-action: none`. Mumu must never block page scrolling.
+- Sounds respect `settings.audio.master` and `settings.mumu.sounds`. Respect `prefers-reduced-motion`.
+- Behaviour numbers (weights, timings, thresholds) come from SPEC F8 and live as named constants in one file.
