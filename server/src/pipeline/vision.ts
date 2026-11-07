@@ -10,15 +10,15 @@ import { VISION_PROMPT_VERSION, VisionResultSchema, type VisionResult } from "./
 const NAMESPACE = "vision";
 
 /** docs/PROMPTS.md §1. Bump VISION_PROMPT_VERSION when this text changes. */
-const VISION_INSTRUCTIONS = `You are reading one horizontal slice of a comic. Find every piece of text a reader would read: speech bubbles, thought bubbles, narration boxes/captions, and sound-effect lettering.
+const VISION_INSTRUCTIONS = `You are reading one horizontal slice of a comic. Find every piece of text a reader would read: speech bubbles, thought bubbles, narration boxes/captions, and sound-effect lettering. Be exhaustive: a dense page has 8-15 items in total, so even one slice of it can hold several. Black jagged bubbles with white text are speech or spells. List every one.
 
 For each item return:
 - kind: speech, thought, narration, or sfx.
-- text: exactly as lettered. Join line breaks with spaces. Keep punctuation. Do not translate, correct, or summarize. Skip text you cannot read confidently.
+- text: exactly as lettered. Join line breaks with spaces. Keep punctuation. Do not translate, correct, or summarize.
 - box: [ymin, xmin, ymax, xmax] as four numbers normalized 0-1000 relative to THIS slice.
 - emotion: one of neutral, happy, angry, sad, scared, surprised, determined, tender, smug. Judge from the wording, the lettering, and the speaker's face.
 - delivery: shout (bold, large, or jagged lettering, or a spiky bubble), whisper (small or dotted lettering, or a dashed bubble), otherwise normal.
-- speakerHint: a short visual description of the character the bubble's tail points to (hair, clothing, distinctive features), or null if no tail or speaker is visible.
+- speakerHint: a short visual description of the character the bubble's tail points to (hair, clothing, distinctive features), or null if no tail or speaker is visible. A spell is spoken by the character casting it, so its tail points to that character's hand or mouth.
 - speakerCastId: the id from KNOWN CAST only if you are confident it is that character; otherwise null. Never guess.
 - sfxTag (sfx only, otherwise null): the closest of punch, sword_clash, explosion, whoosh, footsteps, door, heartbeat, gasp, crowd, magic, or null if none fits.
 

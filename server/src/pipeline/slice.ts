@@ -1,8 +1,12 @@
 import sharp from "sharp";
 
-/** Target segment height as a multiple of page width (the allowed range is MIN..MAX). */
-export const SEGMENT_MIN_RATIO = 1.5;
-export const SEGMENT_MAX_RATIO = 2;
+/**
+ * Target segment height as a multiple of page width (the allowed range is MIN..MAX), about 1×.
+ * Dense pages (8-15 bubbles) lost text when a whole 1.4× page went to the model as one image,
+ * so a page taller than MAX is cut into bands near 1× instead.
+ */
+export const SEGMENT_MIN_RATIO = 0.7;
+export const SEGMENT_MAX_RATIO = 1.2;
 /** Fraction of a segment's height shared with the next segment. */
 export const SEGMENT_OVERLAP = 0.12;
 
@@ -15,11 +19,11 @@ export interface SegmentRect {
 }
 
 /**
- * Plan the bands for one page. A page no taller than 2× its width is a single segment.
- * Taller pages get the fewest equal-height segments (each at most 2× the width) whose
+ * Plan the bands for one page. A page no taller than SEGMENT_MAX_RATIO× its width is a single
+ * segment. Taller pages get the fewest equal-height segments (each at most that tall) whose
  * overlaps cover the page exactly. The overlap is at least 12% of a segment; when the
- * equal-split height would fall under 1.5× the width, segments are clamped to 1.5× and the
- * overlap grows instead, so every multi-segment band is 1.5–2× as tall as wide.
+ * equal-split height would fall under SEGMENT_MIN_RATIO× the width, segments are clamped to
+ * that and the overlap grows instead, so every multi-segment band is 0.7–1.2× as tall as wide.
  */
 export function planSegments(width: number, height: number): SegmentRect[] {
   if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) {

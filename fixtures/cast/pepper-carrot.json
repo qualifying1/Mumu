@@ -1,0 +1,65 @@
+{
+  "seriesId": "series_pepper_carrot",
+  "newCharacters": [
+    {
+      "id": "chr_pepper",
+      "seriesId": "series_pepper_carrot",
+      "name": "Pepper",
+      "description": "Young witch with a huge floppy witch hat with cat-ear tips, red vest, plaid cuffs and a ponytail. Hair looks brown, purple or green depending on the panel's coloured lighting; always the same girl who rides with Carrot.",
+      "voiceSlot": "female_young",
+      "profileId": "female_young_1",
+      "voice": {
+        "voice": "Leda",
+        "style": "bright, lively",
+        "speed": 1.05,
+        "pitch": 0
+      },
+      "firstSeenChapterId": "ch1"
+    },
+    {
+      "id": "chr_carrot",
+      "seriesId": "series_pepper_carrot",
+      "name": "Carrot",
+      "description": "Small orange tabby cat with big eyes who rides on Pepper's shoulder or her broom.",
+      "voiceSlot": "male_young",
+      "profileId": "male_young_1",
+      "voice": {
+        "voice": "Puck",
+        "style": "energetic, confident",
+        "speed": 1.05,
+        "pitch": 0
+      },
+      "firstSeenChapterId": "ch1"
+    },
+    {
+      "id": "chr_cayenne",
+      "seriesId": "series_pepper_carrot",
+      "name": "Cayenne",
+      "description": "Pepper's stern duel opponent: sharp scowling face, dark pointed hat with a belt buckle, dark coat; looks green in the green-lit panels. Pepper calls them 'master Cayenne'.",
+      "voiceSlot": "female_cold",
+      "profileId": "female_cold_1",
+      "voice": {
+        "voice": "Erinome",
+        "style": "cool, detached",
+        "speed": 0.95,
+        "pitch": 0
+      },
+      "firstSeenChapterId": "ch1"
+    },
+    {
+      "id": "chr_elder_witch",
+      "seriesId": "series_pepper_carrot",
+      "name": "Elder Witch",
+      "description": "Old witch with a big white afro of hair and a big nose, who stops the duel and calls everyone over.",
+      "voiceSlot": "female_elder",
+      "profileId": "female_elder_1",
+      "voice": {
+        "voice": "Vindemiatrix",
+        "style": "gentle, aged",
+        "speed": 0.9,
+        "pitch": -1
+      },
+      "firstSeenChapterId": "ch1"
+    }
+  ]
+}

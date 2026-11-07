@@ -4,19 +4,19 @@ How to test tonight: in AI Studio, pick the vision model, turn on **structured o
 
 ---
 
-## 1. Vision prompt (per segment). Version: `vision-v2` (v2 added the credits/promotional-page sentence)
+## 1. Vision prompt (per segment). Version: `vision-v3` (v2 added the credits/promotional-page sentence; v3 dropped "skip text you cannot read confidently", added the "list every one" push for dense pages, and the spell-tail rule)
 
 Inputs sent with this prompt: the segment image, the KNOWN CAST list (id, name, description), and the segment's position ("segment 4 of 19").
 
-> You are reading one horizontal slice of a comic. Find every piece of text a reader would read: speech bubbles, thought bubbles, narration boxes/captions, and sound-effect lettering.
+> You are reading one horizontal slice of a comic. Find every piece of text a reader would read: speech bubbles, thought bubbles, narration boxes/captions, and sound-effect lettering. Be exhaustive: a dense page has 8-15 items in total, so even one slice of it can hold several. Black jagged bubbles with white text are speech or spells. List every one.
 >
 > For each item return:
 > - `kind`: speech, thought, narration, or sfx.
-> - `text`: exactly as lettered. Join line breaks with spaces. Keep punctuation. Do not translate, correct, or summarize. Skip text you cannot read confidently.
+> - `text`: exactly as lettered. Join line breaks with spaces. Keep punctuation. Do not translate, correct, or summarize.
 > - `box`: [ymin, xmin, ymax, xmax] normalized 0–1000 relative to THIS slice.
 > - `emotion`: one of neutral, happy, angry, sad, scared, surprised, determined, tender, smug. Judge from the wording, the lettering, and the speaker's face.
 > - `delivery`: shout (bold, large, or jagged lettering, or a spiky bubble), whisper (small or dotted lettering, or a dashed bubble), otherwise normal.
-> - `speakerHint`: a short visual description of the character the bubble's tail points to (hair, clothing, distinctive features), or null if no tail or speaker is visible.
+> - `speakerHint`: a short visual description of the character the bubble's tail points to (hair, clothing, distinctive features), or null if no tail or speaker is visible. A spell is spoken by the character casting it, so its tail points to that character's hand or mouth.
 > - `speakerCastId`: the id from KNOWN CAST only if you are confident it is that character; otherwise null. Never guess.
 > - `sfxTag` (sfx only): the closest of punch, sword_clash, explosion, whoosh, footsteps, door, heartbeat, gasp, crowd, magic, or null if none fits.
 >
@@ -24,13 +24,13 @@ Inputs sent with this prompt: the segment image, the KNOWN CAST list (id, name, 
 >
 > List items in reading order: top to bottom, and left to right within the same row. Ignore watermarks, credits, page numbers, logos, and signs that are part of the background unless a character reads them aloud. Ignore all text on credits, donation, patron, sponsor, license or promotional pages (thank-you lists, "support the author" notes, website addresses), even when it is lettered like narration; return an empty items list for such a slice. If the slice contains no text, return an empty list.
 
-## 2. Reasoning prompt (per chapter, text only). Version: `reason-v2` (v2: the recap is told by a background storyteller, not Mumu; narration is not a character)
+## 2. Reasoning prompt (per chapter, text only). Version: `reason-v3` (v2: the recap is told by a background storyteller, not Mumu; narration is not a character. v3: match a character across coloured lighting on outfit, hat and companions, preferring a known cast id)
 
 Inputs: KNOWN CAST (id, name, description), and the chapter transcript as numbered lines: `order | kind | text | speakerHint | speakerCastId | segment mood/intensity`.
 
 > You are the casting director for a voiced comic. Using the transcript and the known cast:
 >
-> 1. **Speakers.** For every speech or thought line, choose a speaker: a known cast id, or a new character key like `new_1`. Use the same key every time that new character speaks. Use `speakerCastId` and `speakerHint` as evidence, along with the conversation flow: replies alternate, and a character addressed by name is usually the *listener*, not the speaker. If you cannot tell, use null.
+> 1. **Speakers.** For every speech or thought line, choose a speaker: a known cast id, or a new character key like `new_1`. Use the same key every time that new character speaks. Use `speakerCastId` and `speakerHint` as evidence, along with the conversation flow: replies alternate, and a character addressed by name is usually the *listener*, not the speaker. The same character looks different in different coloured lighting (hair and clothes can read as brown, purple or green), so match on outfit, hat and companions, and prefer a known cast id over a new character. If you cannot tell, use null.
 > 2. **New characters.** For each new key give: `name` (a real name if the dialogue reveals it, otherwise a short descriptive label), `description` (visual, from the hints, for recognizing them in later chapters), and `voiceSlot` (one of narrator, male_young, male_adult, male_deep, male_elder, female_young, female_adult, female_cold, female_elder, child). Use male_deep for villains and gruff fighters, and female_cold for cold or aloof women.
 > 3. **Music regions.** Split the chapter into contiguous regions covering every line from first to last. Give each region `startOrder`, `endOrder`, `mood`, and `intensity`. Avoid flicker: do not change mood more often than every ~6 lines unless the scene clearly shifts (a fight starts, a reveal, a death). Use `climax` for at most one peak per chapter.
 > 4. **Recap.** Write `recap`: 2–3 short sentences in present tense, summarizing what happened in THIS chapter for a reader who will hear it just before the next chapter, like the "previously" of a show. Voice: a warm, clear storyteller speaking from the background; third person, never first person, and never as a character of the comic. State only what the transcript shows; no guesses about what comes next.

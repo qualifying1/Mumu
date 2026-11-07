@@ -2,7 +2,7 @@ import { CueKindSchema, DeliverySchema, EmotionSchema, IntensitySchema, MoodSche
 import { z } from "zod";
 
 /** Bump whenever the vision prompt or this schema changes, so cached results are ignored. */
-export const VISION_PROMPT_VERSION = "vision-v2";
+export const VISION_PROMPT_VERSION = "vision-v3";
 
 /**
  * Box as Gemini returns it: [ymin, xmin, ymax, xmax], integers-ish in 0–1000, relative to

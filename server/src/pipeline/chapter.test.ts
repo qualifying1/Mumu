@@ -8,6 +8,7 @@ import { DiskCache } from "./cache.js";
 import { castNewCharacters, loadCastFromPackages, pickProfileId } from "./cast.js";
 import { buildChapterDraft } from "./chapter.js";
 import { DraftPackageSchema, regionsFromOrders } from "./draft.js";
+import { ChapterPatchSchema } from "./patch.js";
 import type { ReasonGenerate, VisionGenerate } from "./gemini.js";
 import { geminiJsonSchema } from "./jsonSchema.js";
 import type { MergedLine } from "./merge.js";
@@ -276,7 +277,8 @@ describe("buildChapterDraft", () => {
   });
 
   it("runs every stage and returns a valid draft package", async () => {
-    const page = await sharp({ create: { width: 100, height: 150, channels: 3, background: { r: 200, g: 200, b: 200 } } }).jpeg().toBuffer();
+    // 100x110 is within one band (up to 1.2x the width), so the page stays a single segment.
+    const page = await sharp({ create: { width: 100, height: 110, channels: 3, background: { r: 200, g: 200, b: 200 } } }).jpeg().toBuffer();
     const visionGenerate = vi.fn<VisionGenerate>(async () =>
       JSON.stringify({
         items: [
@@ -323,6 +325,51 @@ describe("buildChapterDraft", () => {
     expect(draft.regions).toHaveLength(1);
     expect(draft.recap.text).toMatch(/guard/);
     expect(states).toEqual(["slicing", "slicing", "analyzing", "reasoning", "reasoning", "casting"]);
+  });
+
+  it("applies a hand-fix patch: the model sees the added line, and the patch's speakers win over the model's", async () => {
+    const page = await sharp({ create: { width: 100, height: 110, channels: 3, background: { r: 200, g: 200, b: 200 } } }).jpeg().toBuffer();
+    const visionGenerate = vi.fn<VisionGenerate>(async () =>
+      JSON.stringify({
+        items: [
+          { kind: "speech", text: "Who goes there?", box: [100, 100, 200, 500], emotion: "angry", delivery: "shout", speakerHint: "guard", speakerCastId: null, sfxTag: null },
+          { kind: "sfx", text: "BOOM", box: [600, 600, 700, 900], emotion: "neutral", delivery: "normal", speakerHint: null, speakerCastId: null, sfxTag: "explosion" },
+        ],
+        mood: "tense",
+        intensity: 2,
+      }),
+    );
+    const pepper = {
+      id: "chr_pepper", seriesId: "s1", name: "Pepper", description: "young witch", voiceSlot: "female_young" as const, profileId: "female_young_1",
+      voice: snapshotVoice(DEFAULT_PROFILES.find((p) => p.id === "female_young_1")!), firstSeenChapterId: "ch0",
+    };
+    // The model, shown the patched 3-line transcript, still guesses a new character for line 1 and gives line 3 no speaker.
+    const reasoning: ReasoningResult = {
+      speakers: [{ order: 1, speaker: "new_1" }, { order: 3, speaker: null }],
+      newCharacters: [{ key: "new_1", name: "Guard", description: "armored man", voiceSlot: "male_deep" }],
+      regions: [{ startOrder: 1, endOrder: 3, mood: "tense", intensity: 2 }],
+      recap: "Pepper shouts and things go boom.",
+    };
+    const reasonGenerate = vi.fn<ReasonGenerate>(async () => JSON.stringify(reasoning));
+    const logs: string[] = [];
+
+    const { draft, lines, patchSummary } = await buildChapterDraft(
+      {
+        seriesId: "s1", chapterId: "ch1", pages: [{ bytes: page }], cast: [pepper], profiles: DEFAULT_PROFILES,
+        patch: ChapterPatchSchema.parse({
+          fix: [{ match: "Who goes there?", speaker: "chr_pepper" }],
+          add: [{ pageIndex: 0, box: { x0: 0.1, y0: 0.8, x1: 0.5, y1: 0.9 }, kind: "speech", text: "Not so fast!", speaker: "chr_pepper", delivery: "shout" }],
+        }),
+      },
+      { models: { vision: "v", reasoning: "r", tts: "t" }, cache: new DiskCache(dir), visionGenerate, reasonGenerate, visionConcurrency: 1, sleep: async () => {}, log: (l) => logs.push(l), newCharacterId: () => "chr_guard" },
+    );
+
+    expect(reasonGenerate.mock.calls[0]![0].prompt).toContain("Not so fast!");
+    expect(lines.map((l) => l.text)).toEqual(["Who goes there?", "BOOM", "Not so fast!"]);
+    expect(draft.cues.map((c) => [c.order, c.characterId])).toEqual([[1, "chr_pepper"], [2, null], [3, "chr_pepper"]]);
+    expect(draft.newCharacters).toEqual([]); // new_1 no longer speaks, so it is not created
+    expect(patchSummary).toEqual({ added: 1, fixed: 1, removed: 0 });
+    expect(logs).toContain("patch: 1 added, 1 fixed, 0 removed");
   });
 
   it("fails loudly when the chapter has no text", async () => {
