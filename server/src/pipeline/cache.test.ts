@@ -37,4 +37,11 @@ describe("DiskCache", () => {
     const files = await readdir(path.join(dir, "vision"));
     expect(files).toEqual(["k.json"]);
   });
+
+  it("survives many concurrent writers of one key (Windows refuses simultaneous renames onto one target)", async () => {
+    const cache = new DiskCache(dir);
+    await Promise.all(Array.from({ length: 24 }, (_, i) => cache.write("tts", "same", `v${i}`, "wav")));
+    expect(await readdir(path.join(dir, "tts"))).toEqual(["same.wav"]);
+    expect((await cache.read("tts", "same", "wav"))?.toString()).toMatch(/^v\d+$/);
+  });
 });
