@@ -1,10 +1,13 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
+import ProcessingPanel from "../components/ProcessingPanel.tsx";
 import { db } from "../db/db.ts";
 import { extractPages } from "../import/extract.ts";
 import { importChapter } from "../import/importChapter.ts";
 import { nextChapterNumber, titleFromFileName } from "../import/pages.ts";
+import { dismissView, startProcessing, useProcessViews } from "../processing/manager.ts";
+import { isBusy } from "../processing/steps.ts";
 
 const NEW_SERIES = "__new__";
 
@@ -20,6 +23,8 @@ export default function Add() {
   const [newTitle, setNewTitle] = useState("");
   const [numberOverride, setNumberOverride] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const views = useProcessViews();
+  const processingBusy = [...views.values()].some((v) => isBusy(v));
 
   const defaultNumber = useMemo(() => {
     if (seriesChoice === NEW_SERIES) return 1;
@@ -39,7 +44,7 @@ export default function Add() {
     try {
       setStatus({ kind: "working", message: "Mumu is unpacking the pages…" });
       const pages = await extractPages(files);
-      await importChapter({
+      const imported = await importChapter({
         series: seriesChoice === NEW_SERIES ? { kind: "new", title: newTitle } : { kind: "existing", seriesId: seriesChoice },
         chapterNumber: Number(chapterNumber),
         pages,
@@ -48,8 +53,19 @@ export default function Add() {
       setFiles([]);
       setNumberOverride(null);
       if (fileInput.current) fileInput.current.value = "";
+      await process(imported.chapterId);
     } catch (e) {
       console.error("Import failed", e);
+      setStatus({ kind: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
+  /** Start (or retry) processing. startProcessing reports its own failures in the panel; only "busy" throws. */
+  async function process(chapterId: string) {
+    try {
+      await startProcessing(chapterId);
+    } catch (e) {
+      console.error("Could not start processing", e);
       setStatus({ kind: "error", message: e instanceof Error ? e.message : String(e) });
     }
   }
@@ -123,11 +139,11 @@ export default function Add() {
 
       <button
         type="button"
-        disabled={busy || files.length === 0}
+        disabled={busy || processingBusy || files.length === 0}
         onClick={onImport}
         className="mt-6 min-h-[44px] w-full border-2 border-current px-4 font-bold disabled:opacity-40"
       >
-        {busy ? "Importing…" : "Import"}
+        {busy ? "Importing…" : "Import & process"}
       </button>
 
       {status.kind === "working" && <p className="mt-3 text-sm">{status.message}</p>}
@@ -142,6 +158,22 @@ export default function Add() {
         </p>
       )}
 
+      {[...views.entries()].map(([chapterId, view]) => {
+        const chapter = (chapters ?? []).find((c) => c.id === chapterId);
+        const title = chapter ? `${seriesById.get(chapter.seriesId)?.title ?? "(unknown series)"} · Ch. ${chapter.number}` : "Chapter";
+        return (
+          <ProcessingPanel
+            key={chapterId}
+            title={title}
+            view={view}
+            readTo={`/read/${chapterId}`}
+            retryDisabled={processingBusy}
+            onRetry={() => void process(chapterId)}
+            onDismiss={() => dismissView(chapterId)}
+          />
+        );
+      })}
+
       <h2 className="mt-8 text-lg font-bold">Library</h2>
       {sortedChapters.length === 0 ? (
         <p className="mt-1 text-sm opacity-70">Nothing imported yet.</p>
@@ -152,8 +184,18 @@ export default function Add() {
               <Link to={`/read/${c.id}`} className="underline">
                 {seriesById.get(c.seriesId)?.title ?? "(unknown series)"} · Ch. {c.number}
               </Link>
-              <span className="opacity-70">
+              <span className="flex items-center gap-2 opacity-70">
                 {c.pageCount} pages · {c.status}
+                {!isBusy(views.get(c.id)) && c.status !== "ready" && (
+                  <button
+                    type="button"
+                    disabled={processingBusy}
+                    onClick={() => void process(c.id)}
+                    className="pixel-frame min-h-11 bg-paper px-3 font-bold text-ink opacity-100 disabled:opacity-40"
+                  >
+                    {c.status === "imported" ? "Process" : "Retry"}
+                  </button>
+                )}
               </span>
             </li>
           ))}
