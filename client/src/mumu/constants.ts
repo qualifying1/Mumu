@@ -85,3 +85,56 @@ export const STROKE_MIN_STEP_PX = 6;
 export const TAP_MEOW_S = 1.2;
 /** How long the read-time speech bubble stays up. */
 export const BUBBLE_S = 3.5;
+
+// ---- No teleporting: every move is a walk, climb, jump, fall or a glide to the pointer ----
+
+/** Brisk walk to the reader corner, the alarm spot, or back onto the floor. */
+export const HURRY_WALK_SPEED_PX_S = 96;
+/** A floor that moves less than this (page scroll) is followed smoothly; a bigger gap is a fall or a jump. */
+export const RIDE_PX = 24;
+export const RIDE_SPEED_PX_S = 600;
+/** Held Mumu glides to the pointer: closing rate in 1 / s (about 100 ms to catch up). */
+export const HOLD_FOLLOW_PER_S = 30;
+/** Sideways speed to the screen edge while climbing it, and to the plank while being pulled up onto a hang. */
+export const CLIMB_SIDESTEP_PX_S = 120;
+export const HANG_PULL_PX_S = 240;
+/** A jump (used to get up onto a higher floor): flight time and arc height grow with the distance. */
+export const JUMP_MIN_S = 0.45;
+export const JUMP_MAX_S = 1;
+export const JUMP_PX_PER_S = 900;
+export const JUMP_HEIGHT_MIN_PX = 40;
+export const JUMP_HEIGHT_MAX_PX = 160;
+export const JUMP_HEIGHT_FRACTION = 0.25;
+/** The alarm climb up the middle of the reading panel: faster than the shelf climb, at x3 in px/s. */
+export const ALARM_CLIMB_SPEED_AT_X3_PX_S = 100;
+/** Position snapping below this is invisible and stops endless sub-pixel chasing. */
+export const ARRIVE_EPS_PX = 0.25;
+
+// ---- C3: reading timer and long-reading alarm (SPEC F8) ----
+
+/** Reading counts only if there was activity within this window. */
+export const ACTIVITY_WINDOW_S = 120;
+/** `readingLog` is written this often while reading. */
+export const LOG_EVERY_S = 15;
+/** The continuous session resets after this long outside the reader. */
+export const SESSION_RESET_OUTSIDE_S = 300;
+/** While the alarm is up, Mumu meows this often, rotating meow1-3. */
+export const ALARM_MEOW_EVERY_S = 2.5;
+
+// ---- C4: reader reactions, recap, reader corner (SPEC F8) ----
+
+/** A mood change reacts at once, then the next reaction waits this long (see stepMoodWatch). */
+export const MOOD_DEBOUNCE_S = 4;
+/** A scene pose is held this long (or until the next mood), then idle life resumes (sit/loaf in the reader). */
+export const MOOD_REACTION_S = 8;
+/** Scene emotes float longer than the petting hearts so they are noticed while reading. */
+export const MOOD_EMOTE_LIFE_S = 2.2;
+/** Battle's "fast tail wag": the animation clock runs this many times faster. */
+export const FAST_ANIM_RATE = 2;
+
+/** The recap bubble stays this long after the narrator audio ends. */
+export const RECAP_LINGER_S = 3;
+/** Without audio (master or voices off) the bubble stays long enough to read: text length / this, clamped. */
+export const RECAP_CHARS_PER_S = 15;
+export const RECAP_SILENT_MIN_S = 6;
+export const RECAP_SILENT_MAX_S = 20;

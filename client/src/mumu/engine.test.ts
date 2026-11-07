@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { IDLE_MAX_S, IDLE_MIN_S, WALK_MIN_DISTANCE_PX, WALK_SPEED_PX_S, YARN_AFTER_IDLE_S } from "./constants.ts";
+import { HURRY_WALK_SPEED_PX_S, IDLE_MAX_S, IDLE_MIN_S, WALK_MIN_DISTANCE_PX, WALK_SPEED_PX_S, YARN_AFTER_IDLE_S } from "./constants.ts";
 import { createMumuState, forceAnim, pickIdleChoice, step, type EngineInput, type MumuState, type Rng } from "./engine.ts";
 import type { Playfield, World } from "./layout.ts";
 
@@ -126,10 +126,15 @@ describe("step: walking", () => {
     expect(s.nextChoiceIn).toBe(IDLE_MIN_S);
   });
 
-  it("never leaves the floor, even if the world shrinks around it", () => {
+  it("walks back onto the floor (briskly, never jumping) if the world shrinks around it", () => {
+    const small = { ...world, maxX: 200 };
     let s: MumuState = { ...createMumuState(world, seq(0)), x: 480, walkTargetX: 490, anim: "walk" };
-    s = step(s, { ...input, world: { ...world, maxX: 200 } }, 0.1, seq(0));
-    expect(s.x).toBeLessThanOrEqual(200);
+    for (let i = 0; i < 60 * 5; i++) {
+      const next = step(s, { ...input, world: small }, 1 / 60, seq(0));
+      expect(Math.abs(next.x - s.x)).toBeLessThanOrEqual(HURRY_WALK_SPEED_PX_S / 60 + 1e-9);
+      s = next;
+    }
+    expect(s.x).toBeLessThanOrEqual(small.maxX + 1);
   });
 
   it("starts a walk of at least WALK_MIN_DISTANCE_PX that stays inside the floor", () => {
@@ -168,11 +173,20 @@ describe("step: reduced motion", () => {
 });
 
 describe("step: reader parking", () => {
-  it("snaps to the park x, cancels any walk, and never wanders", () => {
+  it("walks to the park x (no teleport), cancels any wandering, then sits there for good", () => {
     const walking: MumuState = { ...createMumuState(world, seq(0)), anim: "walk", walkTargetX: 200, x: 300 };
-    let s = step(walking, { ...input, parkAt: 480 }, 0.1, seq(0));
-    expect(s.x).toBe(480);
+    let s = step(walking, { ...input, parkAt: 480 }, 1 / 60, seq(0));
+    expect(s.x).toBeGreaterThan(300); // already heading to the corner, not toward its old target
+    expect(s.x).toBeLessThan(302);
     expect(s.walkTargetX).toBeNull();
+    expect(s.anim).toBe("walk");
+    for (let i = 0; i < 60 * 4 && s.x !== 480; i++) {
+      const next = step(s, { ...input, parkAt: 480 }, 1 / 60, seq(0));
+      expect(next.x - s.x).toBeLessThanOrEqual(HURRY_WALK_SPEED_PX_S / 60 + 1e-9);
+      s = next;
+    }
+    expect(s.x).toBe(480);
+    s = step(s, { ...input, parkAt: 480 }, 1 / 60, seq(0));
     expect(s.anim).toBe("sit");
     expect(s.facing).toBe(-1);
 
