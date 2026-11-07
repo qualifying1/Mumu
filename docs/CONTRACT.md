@@ -30,7 +30,7 @@ This is the single source of truth. M1 turns it into `shared/` (types + zod) plu
 |---|---|---|
 | `id` | string | `<slot>_1`, `<slot>_2` or `<slot>_3` |
 | `slot` | VoiceSlot | |
-| `label` | string | e.g. "Young Hero A". **`narrator_1` is labelled "Mumu"**, the sidekick's voice. |
+| `label` | string | e.g. "Young Hero A". `narrator_1` is labelled "Narrator" and is the narrator voice. **It is not Mumu**: Mumu only presents the recap bubble. |
 | `voice` | string | Provider voice name |
 | `style` | string | Default delivery style |
 | `speed` | number | 0.8–1.2. Applied in the ffmpeg encode step (§9), not by the TTS model. |
@@ -44,11 +44,13 @@ This is the single source of truth. M1 turns it into `shared/` (types + zod) plu
 | `name` | string | Real name if the dialogue reveals it, otherwise a descriptive label |
 | `description` | string | Visual description, used to recognize them in later chapters |
 | `voiceSlot` | VoiceSlot | |
-| `profileId` | string | Which VoiceProfile voices this character. The user can reassign it in the Voices tab. |
+| `profileId` | string | **Label only**: which VoiceProfile `voice` was copied from. Nothing reads it for TTS. |
+| `voice` | `{ voice, style, speed, pitch }` | **Snapshot** of that profile's `voice`, `style`, `speed` and `pitch`, copied once when the character is created (`snapshotVoice` in `shared/`). The character keeps it for life. |
 | `firstSeenChapterId` | string | |
 
-- **Casting rule** (code, not an LLM): for a new character, take the first of `<slot>_1`, `<slot>_2`, `<slot>_3` that this series' cast isn't already using; if all three are used, take `<slot>_1`. **The server never modifies existing characters.**
-- **Voice resolution for TTS:** `speech`/`thought` lines with a character use that character's profile. Lines with an unknown speaker, `narration`, and the chapter recap use `narrator_1` (Mumu).
+- **Casting rule** (code, not an LLM): for a new character, take the first of `<slot>_1`, `<slot>_2`, `<slot>_3` that this series' cast isn't already using; if all three are used, take `<slot>_1`. Set `profileId` to that profile and `voice` to its snapshot (`snapshotVoice`). **The server never modifies existing characters.**
+- **Voice resolution for TTS:** `speech`/`thought` lines with a character use that character's **`voice` snapshot**, never the live profile table. Lines with an unknown speaker, `narration`, and the chapter recap use the `narrator_1` profile from `meta.profiles` (the narrator voice).
+- **A chapter is voiced exactly once, at processing time, and a character keeps its voice forever through its id.** Editing a profile affects only characters created afterwards. Editing one character's voice affects future chapters only. Already-generated audio is never regenerated.
 
 ## 4. HTTP API (server, port 8787)
 | Method & path | Request | Response |
@@ -61,7 +63,7 @@ This is the single source of truth. M1 turns it into `shared/` (types + zod) plu
 
 - Jobs are in memory only, and a package is kept for 30 min after `done`. The client polls every 1.5 s and offers Retry after a 404.
 - CORS allows the origins listed in `CORS_ORIGIN` (comma-separated). The dev default is `:5173`, `:5174`, and `:4173` (the production preview).
-- Re-voicing (after editing a profile or a character's profile) is a new `POST /jobs`. Vision and reasoning come from the cache. Only lines whose voice, style or text changed get new TTS; a change to speed or pitch alone only re-encodes cached clips (§9).
+- There is no re-voicing. A failed job's Retry is just a new `POST /jobs` (nothing was stored). `meta.cast` carries each existing character's `voice`, and the server uses it as sent.
 
 ## 5. ChapterPackage
 | Field | Type | Notes |
@@ -72,7 +74,7 @@ This is the single source of truth. M1 turns it into `shared/` (types + zod) plu
 | `newCharacters` | Character[] | Only characters created by this job. The client adds them to the cast. |
 | `cues` | Cue[] | Sorted by `order` |
 | `regions` | Region[] | Contiguous, covering the chapter from the first cue to the last |
-| `recap` | `{ text, audioId }` | 2–3 sentences about **this** chapter, in Mumu's voice. Played when the next chapter opens. |
+| `recap` | `{ text, audioId }` | 2–3 sentences about **this** chapter, voiced by the narrator voice. Played when the next chapter opens, while Mumu presents the "Previously…" bubble. |
 | `audio` | AudioClip[] | One per voiced cue, plus one for the recap |
 
 **Cue:** `id`, `order` (int), `kind`, `pageIndex`, `box`, `text`, `characterId` (string or null), `emotion`, `delivery`, `audioId` (string or null; null for `sfx` and for text with no letters or digits), `sfxTag` (`sfx` only; null means no matching sound).

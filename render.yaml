@@ -1,0 +1,27 @@
+# Render Blueprint for the API. Build from the repo root so the `shared/` workspace resolves (docs/DEPLOY.md).
+# Secrets and model IDs are not committed: Render prompts for every `sync: false` value on first deploy.
+services:
+  - type: web
+    name: mumu-server
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run start -w server
+    healthCheckPath: /health
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: VISION_MODEL
+        sync: false
+      - key: REASONING_MODEL
+        sync: false
+      - key: TTS_MODEL
+        sync: false
+      - key: CORS_ORIGIN # the Vercel URL, e.g. https://mumu.vercel.app (comma-separate more origins)
+        sync: false
+      - key: CACHE_DIR
+        value: .cache
+      - key: VISION_CONCURRENCY
+        value: "4"
+      - key: TTS_CONCURRENCY
+        value: "3"

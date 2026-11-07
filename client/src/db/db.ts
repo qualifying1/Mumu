@@ -3,6 +3,9 @@
 import type { Character, Cue, Region, VoiceProfile } from "@mumu/shared";
 import Dexie, { type EntityTable } from "dexie";
 
+// `characters` rows are the shared `Character` (CONTRACT §3), including its `voice` snapshot. `voice` is not
+// indexed, so the Dexie version stays 1.
+
 export interface Series {
   id: string;
   title: string;
