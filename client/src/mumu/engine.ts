@@ -54,7 +54,7 @@ import {
 import type { MumuAction } from "./gesture.ts";
 import type { Ledge, Playfield, World } from "./layout.ts";
 import { createMoodWatch, MOOD_REACTIONS, stepMoodWatch, type EmoteKind, type MoodWatch } from "./mood.ts";
-import { FRAME_SIZE, type AnimName } from "./sprites.ts";
+import { FRAME_SIZE, HELD_REACH, type AnimName } from "./sprites.ts";
 import type { Mood } from "@mumu/shared";
 
 export type Rng = () => number;
@@ -450,7 +450,7 @@ function beginPet(s: MumuState): MumuState {
 /** Release rules (F8): just under a ledge -> hang; against a side edge -> climb; otherwise fall. */
 function resolveRelease(s: MumuState, input: EngineInput, rng: Rng): MumuState {
   const { field } = input;
-  const top = s.y - field.size;
+  const top = s.y - field.size * HELD_REACH; // the scruff (sprite top) is what the pointer holds
   let catchLedge: Ledge | null = null;
   let bestGap = Infinity;
   for (const l of field.ledges) {
@@ -508,11 +508,11 @@ function applyActions(s: MumuState, input: EngineInput, rng: Rng): MumuState {
           );
         }
         if (s.mode !== "held") break;
-        // Mumu hangs by the scruff from the pointer: the pointer is the top centre of the sprite. Mumu glides there (stepHeld).
+        // Mumu hangs by the scruff from the pointer: the pointer is the top centre of the held sprite (HELD_REACH sprite sizes above the feet). Mumu glides there (stepHeld).
         s = {
           ...s,
           holdX: clamp(action.x, field.bounds.left + half, field.bounds.right - half),
-          holdY: clamp(action.y + field.size, field.bounds.top + field.size, field.bounds.bottom),
+          holdY: clamp(action.y + field.size * HELD_REACH, field.bounds.top + field.size * HELD_REACH, field.bounds.bottom),
         };
         break;
       }

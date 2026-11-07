@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { cornerForDrop, mumuScale, playfieldFor, READER_PARK_MARGIN_PX, worldForScreen, worldFromFloor } from "./layout.ts";
-import { ANIM_NAMES, frameAt, isMirrored, SPRITES } from "./sprites.ts";
+import { ANIM_NAMES, FRAME_SIZE, frameAt, frameHeight, HELD_REACH, isMirrored, SPRITES } from "./sprites.ts";
 
 describe("mumuScale", () => {
   it("is x3 from 768 px wide and x2 below, always an integer", () => {
@@ -86,13 +86,21 @@ describe("sprite manifest", () => {
     }
   });
   it("loops frames by time", () => {
-    const walk = SPRITES.walk; // 6 frames @ 10 fps
+    const walk = SPRITES.walk; // 8 frames @ 10 fps
     expect(frameAt(walk, 0)).toBe(0);
     expect(frameAt(walk, 0.15)).toBe(1);
-    expect(frameAt(walk, 0.6)).toBe(0);
+    expect(frameAt(walk, 0.8)).toBe(0);
   });
   it("clamps a non-looping animation to its last frame", () => {
     expect(frameAt({ frames: 3, fps: 4, loop: false }, 10)).toBe(2);
+  });
+});
+
+describe("held art", () => {
+  it("is a taller cell held by the top: its feet hang HELD_REACH sprites below the pointer", () => {
+    expect(frameHeight(SPRITES.held)).toBe(48);
+    expect(frameHeight(SPRITES.walk)).toBe(FRAME_SIZE);
+    expect(HELD_REACH).toBe(1.5);
   });
 });
 

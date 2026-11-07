@@ -16,6 +16,7 @@ import {
   TAP_MEOW_S,
 } from "./constants.ts";
 import { climbSpeed, createMumuState, forceAnim, hangFeetY, pickIdleChoice, startClimbWalk, step, type EngineInput, type MumuState, type Rng } from "./engine.ts";
+import { HELD_REACH } from "./sprites.ts";
 import type { MumuAction } from "./gesture.ts";
 import type { Playfield, World } from "./layout.ts";
 
@@ -76,16 +77,16 @@ describe("drag", () => {
     expect(s.mode).toBe("held");
     expect(s.anim).toBe("held");
     expect(s.x).toBe(300);
-    expect(s.y).toBe(400 + field.size);
+    expect(s.y).toBe(400 + field.size * HELD_REACH);
     const moved = settle(act(s, [{ type: "move", x: 350, y: 300 }]), 30);
     expect(moved.x).toBe(350);
-    expect(moved.y).toBe(364);
+    expect(moved.y).toBe(300 + field.size * HELD_REACH);
   });
 
   it("keeps Mumu on screen while dragged", () => {
     const s = settle(act(held(), [{ type: "move", x: -500, y: -500 }]), 30);
     expect(s.x).toBe(field.size / 2);
-    expect(s.y).toBe(field.size);
+    expect(s.y).toBe(field.size * HELD_REACH);
     const t = settle(act(held(), [{ type: "move", x: 9999, y: 9999 }]), 30);
     expect(t.x).toBe(field.bounds.right - field.size / 2);
     expect(t.y).toBe(field.bounds.bottom);
@@ -167,7 +168,7 @@ describe("drop", () => {
   });
 
   it("released only a little below the floor line: it rides back up smoothly", () => {
-    let s = act(held(300, world.floorY - field.size + 10), [{ type: "release" }]);
+    let s = act(held(300, world.floorY - field.size * HELD_REACH + 10), [{ type: "release" }]);
     expect(s.y - world.floorY).toBeCloseTo(10, 5);
     s = act(s);
     expect(s.mode).toBe("ground");
