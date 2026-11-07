@@ -7,8 +7,9 @@ export interface PackageRows {
   regions: RegionRow[];
   audio: AudioRow[];
   characters: Character[];
-  recapText: string;
-  recapAudioId: string;
+  /** Deprecated: no recap feature. Only set if an old package carries one. */
+  recapText?: string;
+  recapAudioId?: string;
 }
 
 function base64ToBlob(base64: string, mime: string): Blob {
@@ -31,8 +32,8 @@ export function packageToRows(pkg: ChapterPackage): PackageRows {
       durationMs: a.durationMs,
     })),
     characters: pkg.newCharacters,
-    recapText: pkg.recap.text,
-    recapAudioId: pkg.recap.audioId,
+    recapText: pkg.recap?.text,
+    recapAudioId: pkg.recap?.audioId,
   };
 }
 

@@ -130,7 +130,7 @@ export const DEFAULT_PROFILES: readonly VoiceProfile[] = VOICE_SLOTS.flatMap((sl
   })),
 );
 
-/** Profile used for narration, unknown speakers and the recap (the narrator voice). */
+/** Profile used for narration captions and unknown speakers (the narrator voice). */
 export const NARRATOR_PROFILE_ID = "narrator_1";
 
 /** The one way to snapshot a profile into a character's voice (CONTRACT §3). Casting and the Voices tab both use it. */
