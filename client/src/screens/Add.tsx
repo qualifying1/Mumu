@@ -1,5 +1,6 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import { db } from "../db/db.ts";
 import { extractPages } from "../import/extract.ts";
 import { importChapter } from "../import/importChapter.ts";
@@ -148,9 +149,9 @@ export default function Add() {
         <ul data-testid="library" className="mt-2 space-y-1">
           {sortedChapters.map((c) => (
             <li key={c.id} data-testid="library-row" className="flex justify-between gap-2 border-b border-current/30 py-1 text-sm">
-              <span>
+              <Link to={`/read/${c.id}`} className="underline">
                 {seriesById.get(c.seriesId)?.title ?? "(unknown series)"} · Ch. {c.number}
-              </span>
+              </Link>
               <span className="opacity-70">
                 {c.pageCount} pages · {c.status}
               </span>
