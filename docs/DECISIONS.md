@@ -17,8 +17,8 @@ Claude reads this file. Blanks here become blanks in the build, so fill everythi
 | Theme hook | **Mumu**, a pixel-art orange cat: the reader's digital sidekick | |
 | Mumu art path | A (pack + edits) / B (AI) · source: | License: |
 | Sprite frame size | 32×32 / other: | Must match `sprites.ts` |
-| Palette | lospec name: | |
-| Fonts | Pixelify Sans + Press Start 2P / other: | |
+| Palette | custom warm palette (no lospec name); day + night tokens live in `client/src/index.css` `@theme` / `.dark` | Wall #e9d3a8, wood #b7783f / #7a4a25, paper #fff3d6, ink #2b1d14, accent #b4431a; night = same room, lamp on |
+| Fonts | Pixelify Sans (UI, variable 400–700) + Press Start 2P (titles only) | Self-hosted woff2 in `client/public/fonts` (from fontsource via jsDelivr; OFL) |
 | Team | solo / names + lanes | |
 
 **Available voice names** (for the Voices tab dropdown): Zephyr, Puck, Charon, Kore, Fenrir, Leda, Orus, Aoede, Callirrhoe, Autonoe, Enceladus, Iapetus, Umbriel, Algieba, Despina, Erinome, Algenib, Rasalgethi, Laomedeia, Achernar, Alnilam, Schedar, Gacrux, Pulcherrima, Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafat (Gemini TTS prebuilt voices; the list lives in shared/src/voices.ts)
