@@ -1,12 +1,13 @@
 // Full-screen overlay mounted once in the app root (CONTRACT §10). Mumu is on screen on every
 // route (Home, the other tabs, the reader), except /dev/mumu where the lab runs its own Mumu.
-// The layer is `pointer-events: none`; only Mumu's own element takes pointer events (C2).
+// There is no full-screen element at all: only Mumu's own sprite takes pointer events (touch-action: none),
+// so the pages underneath keep scrolling and tapping everywhere else.
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { db, DEFAULT_SETTINGS } from "../db/db.ts";
 import { subscribe, type Screen } from "./bridge.ts";
-import MumuSprite from "./MumuSprite.tsx";
+import MumuStage from "./MumuStage.tsx";
 import { useMumuEngine } from "./useMumuEngine.ts";
 
 function screenFromPath(pathname: string): Screen {
@@ -31,8 +32,8 @@ function useMumuScreen(): Screen {
 }
 
 function MumuActor({ screen }: { screen: Screen }) {
-  const { state, world, scale } = useMumuEngine({ screen });
-  return <MumuSprite anim={state.anim} animTime={state.animTime} facing={state.facing} scale={scale} x={state.x} floorY={world.floorY} />;
+  const engine = useMumuEngine({ screen });
+  return <MumuStage engine={engine} />;
 }
 
 export default function MumuLayer() {

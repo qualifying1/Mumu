@@ -132,3 +132,43 @@ for (const [name, frames] of Object.entries(anims)) {
   writeFileSync(file, encodePng(width, frameSize, rgba));
   console.log(`${name}.png  ${frames} frames  ${width}x${frameSize}`);
 }
+
+// ---- emotes (16x16, one frame) ----
+// Only the heart exists so far (petting, C2). The rest arrive with C4; real art replaces these files.
+const EMOTE_COLORS = { "#": [120, 20, 40], R: [235, 70, 100], W: [255, 190, 200] };
+const EMOTES = {
+  heart: [
+    "................",
+    "...###....###...",
+    "..#RRR#..#RRR#..",
+    ".#RRWRR##RRRRR#.",
+    ".#RWRRRRRRRRRR#.",
+    ".#RRRRRRRRRRRR#.",
+    ".#RRRRRRRRRRRR#.",
+    "..#RRRRRRRRRR#..",
+    "...#RRRRRRRR#...",
+    "....#RRRRRR#....",
+    ".....#RRRR#.....",
+    "......#RR#......",
+    ".......##.......",
+    "................",
+    "................",
+    "................",
+  ],
+};
+const emoteDir = join(outDir, "emotes");
+mkdirSync(emoteDir, { recursive: true });
+for (const [name, rows] of Object.entries(EMOTES)) {
+  if (rows.length !== 16 || rows.some((r) => r.length !== 16)) throw new Error(`emote ${name} must be 16x16`);
+  const rgba = Buffer.alloc(16 * 16 * 4);
+  rows.forEach((row, y) =>
+    [...row].forEach((ch, x) => {
+      if (ch === ".") return;
+      const color = EMOTE_COLORS[ch];
+      if (!color) throw new Error(`emote ${name}: unknown pixel '${ch}'`);
+      rgba.set([...color, 255], (y * 16 + x) * 4);
+    }),
+  );
+  writeFileSync(join(emoteDir, `${name}.png`), encodePng(16, 16, rgba));
+  console.log(`emotes/${name}.png  16x16`);
+}

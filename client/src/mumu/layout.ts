@@ -58,3 +58,31 @@ export function worldFromFloor(floor: RectLike | null, viewport: { width: number
   const maxX = Math.max(minX, rect.right - half);
   return { minX, maxX, floorY: rect.top };
 }
+
+// ---- C2: the parts of the screen Mumu can be dragged around ----
+
+export interface Ledge {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/** Everything the engine needs beyond the floor: sprite size, the screen box and the ledges (shelf planks) to hang from. */
+export interface Playfield {
+  /** Sprite size in px (FRAME_SIZE * scale). */
+  size: number;
+  /** The screen (viewport) box. */
+  bounds: { left: number; right: number; top: number; bottom: number };
+  ledges: Ledge[];
+}
+
+/** Rects of `[data-mumu-ledge]` elements, clipped to the viewport; ones that are off-screen or too narrow to hang from are dropped. */
+export function playfieldFor(opts: { viewport: { width: number; height: number }; scale: number; ledgeRects: Ledge[] }): Playfield {
+  const { viewport, scale } = opts;
+  const size = FRAME_SIZE * scale;
+  const ledges = opts.ledgeRects
+    .map((r) => ({ left: Math.max(0, r.left), right: Math.min(viewport.width, r.right), top: r.top, bottom: r.bottom }))
+    .filter((r) => r.right - r.left >= size && r.bottom > 0 && r.top < viewport.height);
+  return { size, bounds: { left: 0, right: viewport.width, top: 0, bottom: viewport.height }, ledges };
+}

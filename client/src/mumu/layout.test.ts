@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mumuScale, READER_PARK_MARGIN_PX, worldForScreen, worldFromFloor } from "./layout.ts";
+import { mumuScale, playfieldFor, READER_PARK_MARGIN_PX, worldForScreen, worldFromFloor } from "./layout.ts";
 import { ANIM_NAMES, frameAt, SPRITES } from "./sprites.ts";
 
 describe("mumuScale", () => {
@@ -78,5 +78,27 @@ describe("sprite manifest", () => {
   });
   it("clamps a non-looping animation to its last frame", () => {
     expect(frameAt({ frames: 3, fps: 4, loop: false }, 10)).toBe(2);
+  });
+});
+
+describe("playfieldFor", () => {
+  const viewport = { width: 400, height: 800 };
+  it("has the sprite size and the screen as bounds", () => {
+    const f = playfieldFor({ viewport, scale: 2, ledgeRects: [] });
+    expect(f.size).toBe(64);
+    expect(f.bounds).toEqual({ left: 0, right: 400, top: 0, bottom: 800 });
+  });
+  it("clips ledges to the screen and drops off-screen or too-narrow ones", () => {
+    const f = playfieldFor({
+      viewport,
+      scale: 2,
+      ledgeRects: [
+        { left: -300, right: 900, top: 100, bottom: 120 }, // a scrolled shelf wider than the screen
+        { left: 10, right: 50, top: 100, bottom: 120 }, // narrower than the 64 px sprite
+        { left: 0, right: 400, top: 900, bottom: 920 }, // below the screen
+        { left: 0, right: 400, top: -50, bottom: -30 }, // above the screen
+      ],
+    });
+    expect(f.ledges).toEqual([{ left: 0, right: 400, top: 100, bottom: 120 }]);
   });
 });

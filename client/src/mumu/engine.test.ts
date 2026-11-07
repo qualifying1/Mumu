@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { IDLE_MAX_S, IDLE_MIN_S, WALK_MIN_DISTANCE_PX, WALK_SPEED_PX_S, YARN_AFTER_IDLE_S } from "./constants.ts";
 import { createMumuState, forceAnim, pickIdleChoice, step, type EngineInput, type MumuState, type Rng } from "./engine.ts";
-import type { World } from "./layout.ts";
+import type { Playfield, World } from "./layout.ts";
 
 const world: World = { minX: 100, maxX: 500, floorY: 600 };
-const input: EngineInput = { world, calm: false, reducedMotion: false, interacted: false };
+// One plank, but the walkable range (100..500) is far from the screen edges, so idle life never climbs here.
+const field: Playfield = { size: 64, bounds: { left: 0, right: 600, top: 0, bottom: 700 }, ledges: [{ left: 0, right: 600, top: 200, bottom: 220 }] };
+const input: EngineInput = { world, field, calm: false, reducedMotion: false, interacted: false };
 
 /** Deterministic rng that replays a list of values, then repeats the last. */
 function seq(...values: number[]): Rng {
