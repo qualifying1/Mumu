@@ -1,8 +1,8 @@
 import type { Character } from "@mumu/shared";
 import pLimit from "p-limit";
-import { z } from "zod";
 import { cacheKey, type DiskCache } from "./cache.js";
 import type { VisionGenerate } from "./gemini.js";
+import { geminiJsonSchema } from "./jsonSchema.js";
 import { withBackoff, type Sleep } from "./retry.js";
 import type { Segment } from "./slice.js";
 import { VISION_PROMPT_VERSION, VisionResultSchema, type VisionResult } from "./visionSchema.js";
@@ -24,7 +24,7 @@ For each item return:
 
 Also return for the whole slice: mood (calm, tense, battle, climax, romance, sad, comedic, mystery) and intensity (1-3), judged from the art (action lines, colors, expressions) as well as the text.
 
-List items in reading order: top to bottom, and left to right within the same row. Ignore watermarks, credits, page numbers, logos, and signs that are part of the background unless a character reads them aloud. If the slice contains no text, return an empty items list.`;
+List items in reading order: top to bottom, and left to right within the same row. Ignore watermarks, credits, page numbers, logos, and signs that are part of the background unless a character reads them aloud. Ignore all text on credits, donation, patron, sponsor, license or promotional pages (thank-you lists, "support the author" notes, website addresses), even when it is lettered like narration; return an empty items list for such a slice. If the slice contains no text, return an empty items list.`;
 
 /** Cast as the prompt and the cache key see it. */
 export function castBlock(cast: Character[]): string {
@@ -36,15 +36,9 @@ export function buildVisionPrompt(segmentNumber: number, total: number, cast: Ch
   return `${VISION_INSTRUCTIONS}\n\n${castBlock(cast)}\n\nThis is segment ${segmentNumber} of ${total}.`;
 }
 
-/** JSON Schema sent as responseJsonSchema. `$schema` isn't in Gemini's supported list, so drop it. */
+/** JSON Schema sent as responseJsonSchema. */
 export function visionJsonSchema(): unknown {
-  const schema = z.toJSONSchema(VisionResultSchema) as Record<string, unknown> & {
-    properties: Record<string, unknown>;
-  };
-  delete schema.$schema;
-  // zod emits anyOf[{const:1},{const:2},{const:3}]; Gemini documents `enum`, not `const`.
-  schema.properties.intensity = { type: "integer", enum: [1, 2, 3] };
-  return schema;
+  return geminiJsonSchema(VisionResultSchema);
 }
 
 export interface VisionContext {

@@ -4,7 +4,7 @@ How to test tonight: in AI Studio, pick the vision model, turn on **structured o
 
 ---
 
-## 1. Vision prompt (per segment). Version: `vision-v1`
+## 1. Vision prompt (per segment). Version: `vision-v2` (v2 added the credits/promotional-page sentence)
 
 Inputs sent with this prompt: the segment image, the KNOWN CAST list (id, name, description), and the segment's position ("segment 4 of 19").
 
@@ -22,7 +22,7 @@ Inputs sent with this prompt: the segment image, the KNOWN CAST list (id, name, 
 >
 > Also return for the whole slice: `mood` (calm, tense, battle, climax, romance, sad, comedic, mystery) and `intensity` (1–3), judged from the art (action lines, colors, expressions) as well as the text.
 >
-> List items in reading order: top to bottom, and left to right within the same row. Ignore watermarks, credits, page numbers, logos, and signs that are part of the background unless a character reads them aloud. If the slice contains no text, return an empty list.
+> List items in reading order: top to bottom, and left to right within the same row. Ignore watermarks, credits, page numbers, logos, and signs that are part of the background unless a character reads them aloud. Ignore all text on credits, donation, patron, sponsor, license or promotional pages (thank-you lists, "support the author" notes, website addresses), even when it is lettered like narration; return an empty items list for such a slice. If the slice contains no text, return an empty list.
 
 ## 2. Reasoning prompt (per chapter, text only). Version: `reason-v1`
 
