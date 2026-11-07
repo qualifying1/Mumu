@@ -1,13 +1,14 @@
-import type { Character, JobState, VoiceProfile } from "@mumu/shared";
+import type { ChapterPackage, Character, JobState, VoiceProfile } from "@mumu/shared";
 import type { DiskCache } from "./cache.js";
 import { castNewCharacters } from "./cast.js";
 import { assembleDraft, type DraftPackage } from "./draft.js";
-import type { ReasonGenerate, VisionGenerate } from "./gemini.js";
+import type { ReasonGenerate, TtsGenerate, VisionGenerate } from "./gemini.js";
 import { mergeSegments, type MergedLine } from "./merge.js";
 import { reasonChapter } from "./reason.js";
 import type { Sleep } from "./retry.js";
 import { sliceChapter, type PageInput } from "./slice.js";
 import { analyzeChapter, type RawSegmentResult } from "./vision.js";
+import { voiceChapter } from "./voicing.js";
 
 export interface ChapterProgress {
   state: JobState;
@@ -48,7 +49,7 @@ export interface ChapterDraftResult {
 
 /**
  * slice → vision → merge → reason → cast → draft package (no audio). The one place the stages
- * are wired together: the fixture CLI and the jobs API both call this. A3 adds TTS and packaging.
+ * are wired together up to the audio-less draft; `buildChapter` below adds TTS and packaging.
  */
 export async function buildChapterDraft(input: ChapterInput, deps: ChapterDeps): Promise<ChapterDraftResult> {
   const progress = deps.onProgress ?? (() => {});
@@ -100,4 +101,39 @@ export async function buildChapterDraft(input: ChapterInput, deps: ChapterDeps):
     idByKey,
   });
   return { draft, lines, raw, segmentCount: segments.length };
+}
+
+export interface ChapterBuildDeps extends ChapterDeps {
+  ttsGenerate: TtsGenerate;
+  ttsConcurrency: number;
+}
+
+export interface ChapterBuildResult extends ChapterDraftResult {
+  /** The finished package: the draft plus MP3 clips for every voiced cue and the recap. */
+  pkg: ChapterPackage;
+}
+
+/**
+ * The whole pipeline: slice → vision → merge → reason → cast → tts → package. The fixture CLI and
+ * the jobs API call this and nothing else.
+ */
+export async function buildChapter(input: ChapterInput, deps: ChapterBuildDeps): Promise<ChapterBuildResult> {
+  const progress = deps.onProgress ?? (() => {});
+  const result = await buildChapterDraft(input, deps);
+
+  const pkg = await voiceChapter(
+    result.draft,
+    { cast: input.cast, profiles: input.profiles },
+    {
+      model: deps.models.tts,
+      cache: deps.cache,
+      generate: deps.ttsGenerate,
+      concurrency: deps.ttsConcurrency,
+      sleep: deps.sleep,
+      log: deps.log,
+      onProgress: (done, total) => progress({ state: "voicing", message: `Voicing ${done}/${total} lines`, done, total }),
+    },
+  );
+  progress({ state: "packaging", message: "Packaging the chapter" });
+  return { ...result, pkg };
 }
