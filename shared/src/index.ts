@@ -1,2 +1,4 @@
-// Contract types and zod schemas land here in M1 (docs/CONTRACT.md §2-6).
-export const SHARED_PACKAGE = "@mumu/shared";
+// Contract types and zod schemas (docs/CONTRACT.md §2–6). Changes only from the main checkout.
+export * from "./enums.js";
+export * from "./schemas.js";
+export * from "./voices.js";

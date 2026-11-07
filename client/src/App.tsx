@@ -1,10 +1,19 @@
 import { useEffect, useState } from "react";
+import { BrowserRouter, Outlet, Route, Routes, useLocation } from "react-router";
+import BottomNav from "./components/BottomNav.tsx";
+import MumuLayer from "./mumu/MumuLayer.tsx";
+import MumuLab from "./mumu/MumuLab.tsx";
+import Add from "./screens/Add.tsx";
+import Dev from "./screens/Dev.tsx";
+import Home from "./screens/Home.tsx";
+import Profile from "./screens/Profile.tsx";
+import Reader from "./screens/Reader.tsx";
+import Voices from "./screens/Voices.tsx";
 
 type Health = { status: "loading" } | { status: "ok" } | { status: "error"; message: string };
 
-export default function App() {
+function useHealth(): Health {
   const [health, setHealth] = useState<Health>({ status: "loading" });
-
   useEffect(() => {
     const url = import.meta.env.VITE_API_URL;
     if (!url) {
@@ -18,13 +27,42 @@ export default function App() {
       )
       .catch((e: unknown) => setHealth({ status: "error", message: String(e) }));
   }, []);
+  return health;
+}
 
+/** Tab screens share the bottom nav; the reader and /dev routes do not. */
+function TabLayout() {
+  const health = useHealth();
+  const { pathname } = useLocation();
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-bold">Mumu</h1>
-      <p data-testid="health">
-        /health: {health.status === "error" ? `error — ${health.message}` : health.status}
-      </p>
-    </main>
+    <>
+      <Outlet />
+      {pathname === "/" && (
+        <p data-testid="health" className="px-6 text-xs opacity-60">
+          /health: {health.status === "error" ? `error — ${health.message}` : health.status}
+        </p>
+      )}
+      <BottomNav />
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<TabLayout />}>
+          <Route index element={<Home />} />
+          <Route path="add" element={<Add />} />
+          <Route path="voices" element={<Voices />} />
+          <Route path="profile" element={<Profile />} />
+        </Route>
+        <Route path="read/:chapterId" element={<Reader />} />
+        <Route path="dev" element={<Dev />} />
+        <Route path="dev/mumu" element={<MumuLab />} />
+      </Routes>
+      {/* Mounted once in the app root (CONTRACT §10). */}
+      <MumuLayer />
+    </BrowserRouter>
   );
 }
