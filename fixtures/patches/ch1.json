@@ -1,0 +1,54 @@
+{
+  "fix": [
+    { "match": { "text": "STOP!!!", "pageIndex": 4 }, "speaker": "chr_pepper" },
+    { "match": "I said STOP!", "speaker": "chr_pepper" },
+    { "match": "That's enough!", "speaker": "chr_pepper" }
+  ],
+  "add": [
+    {
+      "pageIndex": 2,
+      "box": { "x0": 0.82, "y0": 0.05, "x1": 0.95, "y1": 0.13 },
+      "kind": "speech",
+      "text": "CARROT! Plan 7-B!",
+      "speaker": "chr_pepper",
+      "emotion": "determined",
+      "delivery": "shout"
+    },
+    {
+      "pageIndex": 2,
+      "box": { "x0": 0.28, "y0": 0.214, "x1": 0.42, "y1": 0.27 },
+      "kind": "speech",
+      "text": "JPEGUS QUALITIS!",
+      "speaker": "chr_pepper",
+      "emotion": "determined",
+      "delivery": "shout"
+    },
+    {
+      "pageIndex": 4,
+      "box": { "x0": 0.11, "y0": 0.232, "x1": 0.19, "y1": 0.265 },
+      "kind": "speech",
+      "text": "Pfft...",
+      "speaker": "chr_cayenne",
+      "emotion": "smug",
+      "after": { "text": "Pshhh...", "pageIndex": 3 }
+    },
+    {
+      "pageIndex": 4,
+      "box": { "x0": 0.63, "y0": 0.154, "x1": 0.79, "y1": 0.214 },
+      "kind": "speech",
+      "text": "Fleeing to a microdimension at your age?",
+      "speaker": "chr_cayenne",
+      "emotion": "smug",
+      "after": { "text": "Pshhh...", "pageIndex": 3 }
+    },
+    {
+      "pageIndex": 4,
+      "box": { "x0": 0.7, "y0": 0.22, "x1": 0.84, "y1": 0.256 },
+      "kind": "speech",
+      "text": "What a pathetic defeat...",
+      "speaker": "chr_cayenne",
+      "emotion": "smug",
+      "after": { "text": "Pshhh...", "pageIndex": 3 }
+    }
+  ]
+}
