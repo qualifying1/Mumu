@@ -40,6 +40,8 @@ export interface EngineInput {
   reducedMotion: boolean;
   /** The user touched Mumu or the app this frame; resets the idle clock. */
   interacted: boolean;
+  /** Reader parking: sit at this x, no wandering (sit/loaf only). Null elsewhere. */
+  parkAt?: number | null;
 }
 
 function randomBetween(rng: Rng, lo: number, hi: number): number {
@@ -98,15 +100,18 @@ export function forceAnim(state: MumuState, anim: AnimName, world: World, rng: R
 
 export function step(state: MumuState, input: EngineInput, dt: number, rng: Rng): MumuState {
   const { world } = input;
+  const parked = input.parkAt != null;
+  // Reduced motion and reader parking both mean: stay put, sit/loaf only.
+  const still = input.reducedMotion || parked;
   let s: MumuState = {
     ...state,
     animTime: state.animTime + dt,
     idleFor: input.interacted ? 0 : state.idleFor + dt,
-    x: Math.min(Math.max(state.x, world.minX), world.maxX),
+    x: Math.min(Math.max(parked ? input.parkAt! : state.x, world.minX), world.maxX),
+    facing: parked ? -1 : state.facing, // the reader corner is on the right: look into the page
   };
 
-  // Reduced motion: no wandering; stop any walk in place.
-  if (input.reducedMotion && s.walkTargetX !== null) {
+  if (still && s.walkTargetX !== null) {
     s = setAnim({ ...s, walkTargetX: null }, "sit");
   }
 
@@ -126,6 +131,6 @@ export function step(state: MumuState, input: EngineInput, dt: number, rng: Rng)
   if (s.nextChoiceIn > 0) return s;
 
   s = { ...s, nextChoiceIn: randomBetween(rng, IDLE_MIN_S, IDLE_MAX_S) };
-  const choice = pickIdleChoice(rng, { calm: input.calm, reducedMotion: input.reducedMotion, idleFor: s.idleFor });
+  const choice = pickIdleChoice(rng, { calm: input.calm, reducedMotion: still, idleFor: s.idleFor });
   return choice === "walk" ? startWalk(s, world, rng) : setAnim(s, CHOICE_ANIM[choice]);
 }

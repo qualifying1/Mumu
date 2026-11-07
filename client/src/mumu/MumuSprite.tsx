@@ -23,6 +23,7 @@ export default function MumuSprite({ anim, animTime, facing, scale, x, floorY, r
   const size = FRAME_SIZE * scale;
   const style: CSSProperties = {
     position: "fixed",
+    zIndex: 50,
     left: Math.round(x - size / 2),
     top: Math.round(floorY - size),
     width: size,

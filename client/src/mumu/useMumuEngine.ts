@@ -1,7 +1,7 @@
-// rAF adapter around the pure engine: reads the floor element, steps the engine, exposes a snapshot.
+// rAF adapter around the pure engine: reads the floor / nav elements, steps the engine, exposes a snapshot.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createMumuState, forceAnim, step, type MumuState } from "./engine.ts";
-import { mumuScale, worldFromFloor, type World } from "./layout.ts";
+import { mumuScale, worldForScreen, type World, type WorldScreen } from "./layout.ts";
 import type { AnimName } from "./sprites.ts";
 
 const MAX_DT_S = 0.1; // a backgrounded tab must not teleport Mumu
@@ -13,23 +13,33 @@ export interface MumuSnapshot {
 }
 
 export interface UseMumuEngineOptions {
-  /** Other tabs: calmer idle life. */
+  screen: WorldScreen;
+  /** Calmer idle life (walk, sit, loaf). Defaults to true on the `other` screen. */
   calm?: boolean;
 }
 
-function readWorld(): { world: World; scale: number } {
+function readWorld(screen: WorldScreen): { world: World; parkX: number | null; scale: number } {
   const scale = mumuScale(window.innerWidth);
   const floor = document.querySelector("[data-mumu-floor]");
-  const world = worldFromFloor(floor ? floor.getBoundingClientRect() : null, { width: window.innerWidth, height: window.innerHeight }, scale);
-  return { world, scale };
+  const avoid = document.querySelector("[data-mumu-avoid]");
+  const { world, parkX } = worldForScreen({
+    screen,
+    floor: floor ? floor.getBoundingClientRect() : null,
+    avoid: avoid ? avoid.getBoundingClientRect() : null,
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    scale,
+  });
+  return { world, parkX, scale };
 }
 
-export function useMumuEngine({ calm = false }: UseMumuEngineOptions = {}) {
+export function useMumuEngine({ screen, calm }: UseMumuEngineOptions) {
   const [snapshot, setSnapshot] = useState<MumuSnapshot>(() => {
-    const { world, scale } = readWorld();
+    const { world, scale } = readWorld(screen);
     return { state: createMumuState(world, Math.random), world, scale };
   });
   const stateRef = useRef(snapshot.state);
+  const screenRef = useRef(screen);
+  screenRef.current = screen;
   const calmRef = useRef(calm);
   calmRef.current = calm;
   const interactedRef = useRef(false);
@@ -41,10 +51,16 @@ export function useMumuEngine({ calm = false }: UseMumuEngineOptions = {}) {
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, MAX_DT_S);
       last = now;
-      const { world, scale } = readWorld();
+      const { world, parkX, scale } = readWorld(screenRef.current);
       stateRef.current = step(
         stateRef.current,
-        { world, calm: calmRef.current, reducedMotion: motion.matches, interacted: interactedRef.current },
+        {
+          world,
+          calm: calmRef.current ?? screenRef.current === "other",
+          reducedMotion: motion.matches,
+          interacted: interactedRef.current,
+          parkAt: parkX,
+        },
         dt,
         Math.random,
       );
@@ -58,7 +74,7 @@ export function useMumuEngine({ calm = false }: UseMumuEngineOptions = {}) {
 
   /** Switch animation now (lab buttons). Counts as an interaction. */
   const force = useCallback((anim: AnimName) => {
-    const { world } = readWorld();
+    const { world } = readWorld(screenRef.current);
     stateRef.current = forceAnim(stateRef.current, anim, world, Math.random);
     interactedRef.current = true;
   }, []);

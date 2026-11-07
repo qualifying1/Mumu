@@ -165,6 +165,35 @@ describe("step: reduced motion", () => {
   });
 });
 
+describe("step: reader parking", () => {
+  it("snaps to the park x, cancels any walk, and never wanders", () => {
+    const walking: MumuState = { ...createMumuState(world, seq(0)), anim: "walk", walkTargetX: 200, x: 300 };
+    let s = step(walking, { ...input, parkAt: 480 }, 0.1, seq(0));
+    expect(s.x).toBe(480);
+    expect(s.walkTargetX).toBeNull();
+    expect(s.anim).toBe("sit");
+    expect(s.facing).toBe(-1);
+
+    const rng = mulberry(3);
+    for (let i = 0; i < 2000; i++) {
+      s = step(s, { ...input, parkAt: 480 }, 0.5, rng);
+      expect(s.x).toBe(480);
+      expect(["sit", "loaf"]).toContain(s.anim);
+    }
+  });
+
+  it("walks again once parking ends", () => {
+    const rng = mulberry(11);
+    let s = createMumuState(world, rng);
+    const seen = new Set<string>();
+    for (let i = 0; i < 4000; i++) {
+      s = step(s, input, 0.5, rng);
+      seen.add(s.anim);
+    }
+    expect(seen.has("walk")).toBe(true);
+  });
+});
+
 describe("forceAnim", () => {
   it("switches animation, cancels any walk and holds it for a normal interval", () => {
     const walking: MumuState = { ...createMumuState(world, seq(0)), anim: "walk", walkTargetX: 450 };

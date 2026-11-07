@@ -7,7 +7,7 @@ import { useMumuEngine } from "./useMumuEngine.ts";
 
 export default function MumuLab() {
   const [calm, setCalm] = useState(false);
-  const { state, world, scale, force } = useMumuEngine({ calm });
+  const { state, world, scale, force } = useMumuEngine({ screen: "home", calm });
 
   return (
     <main className="min-h-screen p-4">

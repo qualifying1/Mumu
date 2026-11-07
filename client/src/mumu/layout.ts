@@ -15,6 +15,34 @@ export interface World {
   floorY: number;
 }
 
+/** Gap between Mumu's parked sprite and the screen edge in the reader. */
+export const READER_PARK_MARGIN_PX = 8;
+
+export type WorldScreen = "home" | "reader" | "other";
+
+/**
+ * The world for a screen (F8):
+ * - home: the `data-mumu-floor` element (desk); with none, the bottom of the screen above any nav.
+ * - other: the bottom of the screen just above the `data-mumu-avoid` element (bottom nav).
+ * - reader: the bottom of the screen; `parkX` is the bottom-right corner, where Mumu sits.
+ */
+export function worldForScreen(opts: {
+  screen: WorldScreen;
+  floor: RectLike | null;
+  avoid: RectLike | null;
+  viewport: { width: number; height: number };
+  scale: number;
+}): { world: World; parkX: number | null } {
+  const { screen, floor, avoid, viewport, scale } = opts;
+  const bottom = avoid ? avoid.top : viewport.height;
+  if (screen === "home" && floor) return { world: worldFromFloor(floor, viewport, scale), parkX: null };
+  if (screen === "reader") {
+    const world = worldFromFloor({ left: 0, right: viewport.width - READER_PARK_MARGIN_PX, top: viewport.height }, viewport, scale);
+    return { world, parkX: world.maxX };
+  }
+  return { world: worldFromFloor({ left: 0, right: viewport.width, top: bottom }, viewport, scale), parkX: null };
+}
+
 export function mumuScale(viewportWidth: number): number {
   return viewportWidth >= WIDE_BREAKPOINT_PX ? SCALE_WIDE : SCALE_NARROW;
 }
