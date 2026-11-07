@@ -1,0 +1,34 @@
+{
+  "name": "@mumu/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "fixture": "tsx src/fixture.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@mumu/shared": "*",
+    "express": "^5.0.0",
+    "cors": "^2.8.5",
+    "multer": "^2.0.0",
+    "dotenv": "^17.0.0",
+    "@google/genai": "latest",
+    "sharp": "^0.34.0",
+    "ffmpeg-static": "^5.2.0",
+    "p-limit": "^7.0.0",
+    "zod": "^4.0.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/multer": "^2.0.0",
+    "@types/node": "^24.0.0",
+    "typescript": "~7.0.2",
+    "vitest": "^5.1.0"
+  }
+}
