@@ -17,7 +17,7 @@ Milestones are in `TASKS.md`, session handling is in `WORKFLOW.md`, and art is i
 
 **Track 2, you (during M0, ~30 min), filling in `DECISIONS.md`:**
 - [ ] AI Studio: create the key, note your free-tier RPM/RPD, pick the vision + TTS models, and run one TTS style test (how does it take the style? See PROMPTS §3).
-- [ ] Voice roster: **narrator_1 = Mumu** first, then one voice per slot. Slot voices 2 and 3 can start as a copy of voice 1 with a different pitch; refine them in the Voices tab later.
+- [ ] Voice roster: **narrator_1 = the narrator** first, then one voice per slot. Slot voices 2 and 3 can start as a copy of voice 1 with a different pitch; refine them in the Voices tab later.
 - [ ] Demo comic: 2 consecutive chapters → `~/fallhacks-assets/ch1/`, `ch2/` (e.g. Pepper&Carrot, CC BY; check the license).
 - [ ] Palette (lospec) and fonts (Pixelify Sans + Press Start 2P woff2). Write both in DECISIONS and DESIGN.
 
@@ -27,7 +27,7 @@ Milestones are in `TASKS.md`, session handling is in `WORKFLOW.md`, and art is i
 | Use | Vision | Reasoning | TTS |
 |---|---|---|---|
 | Lane A development (2 chapters, ~3 prompt revisions) | ~120 | ~10 | ~150 |
-| Deployed server (empty cache): ch1 + ch2 + one re-voice | ~40 | ~3 | ~150 |
+| Deployed server (empty cache): ch1 + ch2 + one retry | ~40 | ~3 | ~150 |
 | Voice previews in the Voices tab | — | — | ~40 |
 | **Total** | **~160** | **~13** | **~340** |
 
@@ -129,7 +129,7 @@ We assumed the project failed and asked why. Each cause is prevented somewhere i
 | Each checkout keeps its own cache, so integration re-pays for Lane A's Gemini calls | One absolute `CACHE_DIR` outside the repo, shared by every checkout and copied via `.worktreeinclude` → `server/.env` (CONTRACT §8) |
 | Demo chapters processed in dev are missing in the offline preview build | Process in the demo origin at P1 (TASKS P1, `/ship`); `:4173` is in CORS |
 | Chapter-2 consistency can't be tested until the very end | Fixture `--cast` flag (A5) tests it in the pipeline at 15:15 |
-| Re-voicing re-runs everything and burns quota | Cache keys exclude voices from vision/reasoning; TTS key includes the voice (CONTRACT §9) |
+| A failed job's Retry (a new POST /jobs) re-runs everything and burns quota | Cache keys exclude voices from vision/reasoning; TTS key includes the voice (CONTRACT §9) |
 | A half-stored package corrupts a chapter | One-transaction store (CONTRACT §6), a single store function (`rules/client.md`) |
 | Lines like "…" break TTS | Text with no letters or digits gets no audio (CONTRACT §5) |
 | Offline demo fails on stage | Production-preview airplane test in B5, `/ship` checklist, demo device = laptop, secure-context rule |

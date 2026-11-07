@@ -13,7 +13,7 @@
     "test": "npm run test -w shared && npm run test -w server && npm run test -w client",
     "check": "npm run typecheck && npm run test",
     "fixture": "npm run fixture -w server --",
-    "sample": "node scripts/make-sample.mjs"
+    "sample": "tsx scripts/make-sample.mjs"
   },
   "allowScripts": {
     "ffmpeg-static@5.3.0": true,

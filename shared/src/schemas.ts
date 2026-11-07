@@ -36,13 +36,19 @@ export const VoiceProfileSchema = z.object({
 });
 export type VoiceProfile = z.infer<typeof VoiceProfileSchema>;
 
+/** The voice fields a character keeps for life: a snapshot of its profile at creation (CONTRACT §3). */
+export const CharacterVoiceSchema = VoiceProfileSchema.pick({ voice: true, style: true, speed: true, pitch: true });
+export type CharacterVoice = z.infer<typeof CharacterVoiceSchema>;
+
 export const CharacterSchema = z.object({
   id: z.string().min(1),
   seriesId: z.string().min(1),
   name: z.string().min(1),
   description: z.string(),
   voiceSlot: VoiceSlotSchema,
+  /** Label only: which profile `voice` was copied from. TTS never reads the profile table for a character. */
   profileId: z.string().min(1),
+  voice: CharacterVoiceSchema,
   firstSeenChapterId: z.string().min(1),
 });
 export type Character = z.infer<typeof CharacterSchema>;

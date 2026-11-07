@@ -57,7 +57,7 @@ The style goes in `speech_metadata.style`; the text stays verbatim. (Confirm the
 | tender | "soft, tender" | | | |
 | smug | "smug, teasing" | | | |
 
-`thought` cues add "inner monologue, intimate". `narration` cues and unknown speakers use the `narrator_1` profile (**Mumu**) with "calm, cinematic narration". The **recap** uses `narrator_1` with "playful, warm storyteller". `POST /preview` uses the profile's own style with the sample line "Hi! I'm ready for my big scene." ("Mrrow! Ready to read together?" for Mumu).
+`thought` cues add "inner monologue, intimate". `narration` cues and unknown speakers use the `narrator_1` profile (the **narrator voice**, not Mumu) with "calm, cinematic narration". The **recap** uses `narrator_1` with "playful, warm storyteller". `POST /preview` uses the profile's own style with the sample line "Hi! I'm ready for my big scene." ("Once upon a time…" for the narrator). Lines with a character use that character's `voice` snapshot, with the style string built from the snapshot's `style` plus the emotion and delivery above.
 
 **Check tonight in AI Studio:** how your TTS model takes the style. Some models take it as a separate style field; others need it in the prompt, like `Say <style>: <text>`. If it's in the prompt, make sure the model **doesn't read the style words aloud.** Write down the format that works here, because A3 depends on it:
 

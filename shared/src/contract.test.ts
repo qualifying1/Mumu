@@ -5,8 +5,10 @@ import {
   AVAILABLE_VOICES,
   ChapterPackageSchema,
   DEFAULT_PROFILES,
+  CharacterSchema,
   VOICE_SLOTS,
   VoiceProfileSchema,
+  snapshotVoice,
 } from "./index.js";
 
 const samplePath = resolve(__dirname, "../../fixtures/sample.json");
@@ -51,11 +53,39 @@ describe("default voice profiles", () => {
     }
   });
 
-  it("validates, uses listed voices, and labels narrator_1 'Mumu'", () => {
+  it("validates, uses listed voices, and labels narrator_1 'Narrator' (not Mumu)", () => {
     for (const p of DEFAULT_PROFILES) {
       expect(() => VoiceProfileSchema.parse(p)).not.toThrow();
       expect(AVAILABLE_VOICES).toContain(p.voice);
     }
-    expect(DEFAULT_PROFILES.find((p) => p.id === "narrator_1")?.label).toBe("Mumu");
+    expect(DEFAULT_PROFILES.find((p) => p.id === "narrator_1")?.label).toBe("Narrator");
+  });
+});
+
+describe("character voice snapshot", () => {
+  const profile = DEFAULT_PROFILES.find((p) => p.id === "male_young_2")!;
+  const base = {
+    id: "chr_a",
+    seriesId: "s",
+    name: "A",
+    description: "d",
+    voiceSlot: "male_young",
+    profileId: profile.id,
+    firstSeenChapterId: "c",
+  };
+
+  it("copies voice, style, speed and pitch from the profile, and nothing else", () => {
+    expect(snapshotVoice(profile)).toEqual({
+      voice: profile.voice,
+      style: profile.style,
+      speed: profile.speed,
+      pitch: profile.pitch,
+    });
+  });
+
+  it("requires a valid voice on every Character", () => {
+    expect(() => CharacterSchema.parse({ ...base, voice: snapshotVoice(profile) })).not.toThrow();
+    expect(() => CharacterSchema.parse(base)).toThrow();
+    expect(() => CharacterSchema.parse({ ...base, voice: { ...snapshotVoice(profile), pitch: 9 } })).toThrow();
   });
 });
