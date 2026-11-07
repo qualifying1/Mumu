@@ -4,10 +4,11 @@
 import {
   CALM_CHOICES,
   CHOICE_ANIM,
-  CLIMB_EDGE_WALK_CHANCE,
-  CLIMB_SPEED_PX_S,
+  CLIMB_AFTER_IDLE_S,
+  CLIMB_SPEED_AT_X3_PX_S,
   DRAG_VELOCITY_SMOOTHING,
   EDGE_CATCH_PX,
+  EDGE_WALK_CHANCE,
   EMOTE_LIFE_S,
   GRAVITY_PX_S2,
   HANG_CATCH_PX,
@@ -32,7 +33,7 @@ import {
 } from "./constants.ts";
 import type { MumuAction } from "./gesture.ts";
 import type { Ledge, Playfield, World } from "./layout.ts";
-import type { AnimName } from "./sprites.ts";
+import { FRAME_SIZE, type AnimName } from "./sprites.ts";
 
 export type Rng = () => number;
 
@@ -59,16 +60,14 @@ export interface MumuState {
   x: number;
   /** Feet y in viewport px: the floor on the ground, the pointer while held, etc. */
   y: number;
-  /** 1 = facing right (art direction), -1 = mirrored. */
+  /** 1 = facing right (art direction), -1 = mirrored. Not used for the climb (back view, never mirrored). */
   facing: 1 | -1;
   /** Seconds until the next idle choice. */
   nextChoiceIn: number;
-  /** Seconds since the last user interaction (gates yarn). */
+  /** Seconds since the last user interaction (gates yarn and the climb). */
   idleFor: number;
   /** Where a walk is heading, or null when not walking. */
   walkTargetX: number | null;
-  /** When the walk ends at a screen edge: -1 left, 1 right; the cat then climbs. */
-  climbAfterWalk: -1 | 1 | null;
 
   mode: Mode;
   /** Seconds the engine has run (the clock for the tap window). */
@@ -81,9 +80,10 @@ export interface MumuState {
   rotation: number;
   angVel: number;
   hangLeft: number;
-  /** Climbing: the feet y to reach, and which screen edge is being climbed. */
+  /** Climbing: the feet y to reach, the ledge it belongs to, and which screen edge is being climbed. */
   climbTargetY: number;
   climbLedge: Ledge | null;
+  climbSide: -1 | 1 | null;
 
   lastTapAt: number | null;
   /** Seconds of petting left; > 0 means being petted. */
@@ -121,12 +121,21 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
 }
 
-/** Weighted idle choice (F8). Yarn needs `idleFor >= YARN_AFTER_IDLE_S`; calm and reduced motion narrow the set. */
-export function pickIdleChoice(rng: Rng, opts: { calm: boolean; reducedMotion: boolean; idleFor: number }): IdleChoice {
+/** Climb speed in px/s for a sprite of `size` px: 40 px/s at x3, scaled with the sprite so it looks the same at x2. */
+export function climbSpeed(size: number): number {
+  return (CLIMB_SPEED_AT_X3_PX_S * (size / FRAME_SIZE)) / 3;
+}
+
+/**
+ * Weighted idle choice (F8). Yarn needs `idleFor >= YARN_AFTER_IDLE_S`; "go climb" needs `canClimb` (Home, a ledge above,
+ * a screen edge to reach) and `idleFor >= CLIMB_AFTER_IDLE_S`; calm and reduced motion narrow the set.
+ */
+export function pickIdleChoice(rng: Rng, opts: { calm: boolean; reducedMotion: boolean; idleFor: number; canClimb?: boolean }): IdleChoice {
   let pool = Object.keys(IDLE_WEIGHTS) as IdleChoice[];
   if (opts.reducedMotion) pool = pool.filter((c) => REDUCED_MOTION_CHOICES.includes(c));
   else if (opts.calm) pool = pool.filter((c) => CALM_CHOICES.includes(c));
   if (opts.idleFor < YARN_AFTER_IDLE_S) pool = pool.filter((c) => c !== "yarn");
+  if (!opts.canClimb || opts.idleFor < CLIMB_AFTER_IDLE_S) pool = pool.filter((c) => c !== "climb");
   const total = pool.reduce((sum, c) => sum + IDLE_WEIGHTS[c], 0);
   let roll = rng() * total;
   for (const choice of pool) {
@@ -147,7 +156,6 @@ export function createMumuState(world: World, rng: Rng): MumuState {
     nextChoiceIn: randomBetween(rng, IDLE_MIN_S, IDLE_MAX_S),
     idleFor: 0,
     walkTargetX: null,
-    climbAfterWalk: null,
     mode: "ground",
     time: 0,
     vy: 0,
@@ -157,6 +165,7 @@ export function createMumuState(world: World, rng: Rng): MumuState {
     hangLeft: 0,
     climbTargetY: 0,
     climbLedge: null,
+    climbSide: null,
     lastTapAt: null,
     petLeft: 0,
     heartIn: 0,
@@ -179,13 +188,21 @@ export function hangFeetY(ledge: Ledge, size: number): number {
   return ledge.bottom + size;
 }
 
-/** Screen edges (-1 left, 1 right) that Mumu can reach on this floor and climb. */
-function climbableEdges(world: World, field: Playfield): Array<-1 | 1> {
+/** Screen edges (-1 left, 1 right) that Mumu's floor reaches, so it can walk into them. */
+function reachableEdges(world: World, field: Playfield): Array<-1 | 1> {
   const half = field.size / 2;
   const edges: Array<-1 | 1> = [];
   if (world.minX - (field.bounds.left + half) <= EDGE_CATCH_PX) edges.push(-1);
   if (field.bounds.right - half - world.maxX <= EDGE_CATCH_PX) edges.push(1);
   return edges;
+}
+
+/** The screen edge the feet are standing at the end of the floor of, if any. */
+function edgeSideAt(x: number, world: World, field: Playfield): -1 | 1 | null {
+  const edges = reachableEdges(world, field);
+  if (edges.includes(-1) && x <= world.minX + 1) return -1;
+  if (edges.includes(1) && x >= world.maxX - 1) return 1;
+  return null;
 }
 
 /** The nearest ledge above `feetY` whose hanging spot is higher up than where the cat is. */
@@ -199,6 +216,7 @@ function ledgeAbove(field: Playfield, feetY: number): Ledge | null {
   return best;
 }
 
+/** Feet x of a cat flush against a screen edge (the sprite box touches the edge). */
 function edgeX(field: Playfield, side: -1 | 1): number {
   const half = field.size / 2;
   return side === -1 ? field.bounds.left + half : field.bounds.right - half;
@@ -206,24 +224,61 @@ function edgeX(field: Playfield, side: -1 | 1): number {
 
 // ---- transitions ----
 
-function startWalk(state: MumuState, world: World, rng: Rng, climbSides: Array<-1 | 1> = [], field?: Playfield): MumuState {
-  // Sometimes the walk heads for a screen edge, and Mumu climbs it on arrival.
-  if (climbSides.length > 0 && field && rng() < CLIMB_EDGE_WALK_CHANCE) {
-    const side = climbSides[Math.floor(rng() * climbSides.length)]!;
+function startWalkTo(s: MumuState, target: number): MumuState {
+  return { ...setAnim(s, "walk"), walkTargetX: target, facing: target > s.x ? 1 : -1 };
+}
+
+/** Walk (back) away from a screen edge, at least WALK_MIN_DISTANCE_PX; sits facing away when there is no room. */
+function turnAround(s: MumuState, side: -1 | 1, world: World, rng: Rng): MumuState {
+  const dir = -side as -1 | 1;
+  const turned: MumuState = { ...s, facing: dir };
+  const span = dir === 1 ? world.maxX - (s.x + WALK_MIN_DISTANCE_PX) : s.x - WALK_MIN_DISTANCE_PX - world.minX;
+  if (span < 0) return setAnim(turned, "sit");
+  return startWalkTo(turned, s.x + dir * (WALK_MIN_DISTANCE_PX + rng() * span));
+}
+
+/**
+ * A walk that ends against a screen edge: climb it when something is above to climb to, otherwise just turn around.
+ * Never climbs on other tabs, in the reader, or with reduced motion.
+ */
+function arriveAtEdge(s: MumuState, side: -1 | 1, input: EngineInput, rng: Rng): MumuState {
+  const { world, field } = input;
+  const mayClimb = !input.calm && !input.reducedMotion && input.parkAt == null;
+  const ledge = mayClimb ? ledgeAbove(field, s.y) : null;
+  if (ledge) return startClimb(s, side, ledge, field);
+  return turnAround(s, side, world, rng);
+}
+
+function startWalk(state: MumuState, world: World, rng: Rng, edges: Array<-1 | 1> = []): MumuState {
+  // Sometimes the walk heads for a screen edge: climb it on arrival, or turn around if there is nothing above.
+  if (edges.length > 0 && rng() < EDGE_WALK_CHANCE) {
+    const side = edges[Math.floor(rng() * edges.length)]!;
     const target = side === -1 ? world.minX : world.maxX;
-    if (Math.abs(target - state.x) >= 1) {
-      return { ...setAnim(state, "walk"), walkTargetX: target, facing: target > state.x ? 1 : -1, climbAfterWalk: side };
-    }
+    if (Math.abs(target - state.x) >= 1) return startWalkTo(state, target);
   }
   // A target at least WALK_MIN_DISTANCE_PX away, on a side that has room.
   const room = [
     { side: -1 as const, span: state.x - WALK_MIN_DISTANCE_PX - world.minX },
     { side: 1 as const, span: world.maxX - (state.x + WALK_MIN_DISTANCE_PX) },
   ].filter((r) => r.span >= 0);
-  if (room.length === 0) return setAnim({ ...state, walkTargetX: null, climbAfterWalk: null }, "sit");
+  if (room.length === 0) return setAnim({ ...state, walkTargetX: null }, "sit");
   const pick = room[Math.floor(rng() * room.length)]!;
   const target = state.x + pick.side * (WALK_MIN_DISTANCE_PX + rng() * pick.span);
-  return { ...setAnim(state, "walk"), walkTargetX: target, facing: pick.side, climbAfterWalk: null };
+  return { ...setAnim(state, "walk"), walkTargetX: target, facing: pick.side };
+}
+
+/**
+ * The "go climb" idle choice: walk to the nearer screen edge (and climb it on arrival). Also used by MumuLab's button.
+ * Needs a reachable edge; with none it just sits.
+ */
+export function startClimbWalk(state: MumuState, input: EngineInput, rng: Rng): MumuState {
+  const { world, field } = input;
+  const edges = reachableEdges(world, field);
+  if (edges.length === 0) return setAnim({ ...state, walkTargetX: null }, "sit");
+  const edgeTarget = (side: -1 | 1) => (side === -1 ? world.minX : world.maxX);
+  const side = edges.reduce((best, e) => (Math.abs(edgeTarget(e) - state.x) < Math.abs(edgeTarget(best) - state.x) ? e : best));
+  if (Math.abs(edgeTarget(side) - state.x) < 1) return arriveAtEdge({ ...state, x: edgeTarget(side) }, side, input, rng);
+  return startWalkTo(state, edgeTarget(side));
 }
 
 /** Switch to an animation now (MumuLab buttons; later: scene reactions). Holds it for a normal idle interval. */
@@ -232,11 +287,11 @@ export function forceAnim(state: MumuState, anim: AnimName, world: World, rng: R
     ...state,
     mode: "ground",
     walkTargetX: null,
-    climbAfterWalk: null,
     petLeft: 0,
     purring: false,
     meowLeft: 0,
     vy: 0,
+    climbSide: null,
     nextChoiceIn: randomBetween(rng, IDLE_MIN_S, IDLE_MAX_S),
   };
   return anim === "walk" ? startWalk(held, world, rng) : setAnim(held, anim);
@@ -253,8 +308,8 @@ function startHang(s: MumuState, ledge: Ledge, field: Playfield, rng: Rng): Mumu
       vy: 0,
       hangLeft: randomBetween(rng, HANG_MIN_S, HANG_MAX_S),
       climbLedge: null,
+      climbSide: null,
       walkTargetX: null,
-      climbAfterWalk: null,
     },
     "hang",
   );
@@ -265,12 +320,12 @@ function startClimb(s: MumuState, side: -1 | 1, ledge: Ledge, field: Playfield):
     {
       ...s,
       mode: "climbing",
-      x: edgeX(field, side),
-      facing: side, // the sprite clings to a wall on its right; mirror for the left edge
+      x: edgeX(field, side), // flush against the edge
+      facing: side,
       climbLedge: ledge,
       climbTargetY: hangFeetY(ledge, field.size),
+      climbSide: side,
       walkTargetX: null,
-      climbAfterWalk: null,
       vy: 0,
     },
     "climb",
@@ -278,11 +333,11 @@ function startClimb(s: MumuState, side: -1 | 1, ledge: Ledge, field: Playfield):
 }
 
 function startFall(s: MumuState): MumuState {
-  return setAnim({ ...s, mode: "falling", vy: 0, walkTargetX: null, climbAfterWalk: null }, "held");
+  return setAnim({ ...s, mode: "falling", vy: 0, walkTargetX: null, climbSide: null }, "held");
 }
 
 function startPet(s: MumuState): MumuState {
-  return setAnim({ ...s, petLeft: PET_DURATION_S, heartIn: 0, purring: true, meowLeft: 0, walkTargetX: null, climbAfterWalk: null }, "tailwag");
+  return setAnim({ ...s, petLeft: PET_DURATION_S, heartIn: 0, purring: true, meowLeft: 0, walkTargetX: null }, "tailwag");
 }
 
 /** Release rules (F8): just under a ledge -> hang; against a side edge -> climb; otherwise fall. */
@@ -325,12 +380,12 @@ function applyActions(s: MumuState, input: EngineInput, rng: Rng): MumuState {
               ...s,
               mode: "held",
               walkTargetX: null,
-              climbAfterWalk: null,
               petLeft: 0,
               purring: false,
               meowLeft: 0,
               hangLeft: 0,
               climbLedge: null,
+              climbSide: null,
               vy: 0,
               dragVx: 0,
               lastTapAt: null,
@@ -357,7 +412,7 @@ function applyActions(s: MumuState, input: EngineInput, rng: Rng): MumuState {
         } else if (s.mode === "ground" && s.petLeft > 0) {
           s = { ...s, petLeft: PET_DURATION_S, lastTapAt: s.time };
         } else {
-          const reply = s.mode === "ground" ? { ...setAnim(s, "meow"), meowLeft: TAP_MEOW_S, walkTargetX: null, climbAfterWalk: null } : s;
+          const reply = s.mode === "ground" ? { ...setAnim(s, "meow"), meowLeft: TAP_MEOW_S, walkTargetX: null } : s;
           s = { ...reply, lastTapAt: s.time, effects: [...s.effects, { type: "readTime" }, { type: "sound", name: "mrrp" }] };
         }
         break;
@@ -384,7 +439,7 @@ function stepEmotes(s: MumuState, dt: number): MumuState {
 }
 
 function stepGround(state: MumuState, input: EngineInput, dt: number, rng: Rng): MumuState {
-  const { world } = input;
+  const { world, field } = input;
   const parked = input.parkAt != null;
   // Reduced motion and reader parking both mean: stay put, sit/loaf only.
   const still = input.reducedMotion || parked;
@@ -398,7 +453,7 @@ function stepGround(state: MumuState, input: EngineInput, dt: number, rng: Rng):
   if (s.petLeft > 0) {
     s = { ...s, petLeft: s.petLeft - dt, heartIn: s.heartIn - dt };
     if (s.heartIn <= 0) {
-      const dx = (rng() - 0.5) * input.field.size * 0.6;
+      const dx = (rng() - 0.5) * field.size * 0.6;
       s = { ...s, heartIn: s.heartIn + HEART_EVERY_S, emotes: [...s.emotes, { id: s.nextEmoteId, kind: "heart", age: 0, dx }], nextEmoteId: s.nextEmoteId + 1 };
     }
     if (s.petLeft <= 0) {
@@ -414,7 +469,7 @@ function stepGround(state: MumuState, input: EngineInput, dt: number, rng: Rng):
   }
 
   if (still && s.walkTargetX !== null) {
-    s = setAnim({ ...s, walkTargetX: null, climbAfterWalk: null }, "sit");
+    s = setAnim({ ...s, walkTargetX: null }, "sit");
   }
 
   if (s.walkTargetX !== null) {
@@ -423,10 +478,8 @@ function stepGround(state: MumuState, input: EngineInput, dt: number, rng: Rng):
     const move = WALK_SPEED_PX_S * dt;
     if (Math.abs(remaining) <= move) {
       const arrived: MumuState = { ...s, x: target, walkTargetX: null, nextChoiceIn: randomBetween(rng, IDLE_MIN_S, IDLE_MAX_S) };
-      const side = arrived.climbAfterWalk;
-      const ledge = side !== null ? ledgeAbove(input.field, arrived.y) : null;
-      if (side !== null && ledge && !still && !input.calm) return startClimb({ ...arrived, climbAfterWalk: null }, side, ledge, input.field);
-      return setAnim({ ...arrived, climbAfterWalk: null }, "sit");
+      const side = edgeSideAt(arrived.x, world, field);
+      return side === null ? setAnim(arrived, "sit") : arriveAtEdge(arrived, side, input, rng);
     }
     return { ...s, x: s.x + Math.sign(remaining) * move, facing: remaining > 0 ? 1 : -1 };
   }
@@ -435,10 +488,12 @@ function stepGround(state: MumuState, input: EngineInput, dt: number, rng: Rng):
   if (s.nextChoiceIn > 0) return s;
 
   s = { ...s, nextChoiceIn: randomBetween(rng, IDLE_MIN_S, IDLE_MAX_S) };
-  const choice = pickIdleChoice(rng, { calm: input.calm, reducedMotion: still, idleFor: s.idleFor });
+  const edges = reachableEdges(world, field);
+  const canClimb = !still && !input.calm && edges.length > 0 && ledgeAbove(field, s.y) !== null;
+  const choice = pickIdleChoice(rng, { calm: input.calm, reducedMotion: still, idleFor: s.idleFor, canClimb });
+  if (choice === "climb") return startClimbWalk(s, input, rng);
   if (choice !== "walk") return setAnim(s, CHOICE_ANIM[choice]);
-  const canClimb = !still && !input.calm && ledgeAbove(input.field, s.y) !== null;
-  return startWalk(s, world, rng, canClimb ? climbableEdges(world, input.field) : [], input.field);
+  return startWalk(s, world, rng, still ? [] : edges);
 }
 
 function stepFalling(s: MumuState, input: EngineInput, dt: number, rng: Rng): MumuState {
@@ -457,11 +512,14 @@ function stepHanging(s: MumuState, dt: number): MumuState {
 }
 
 function stepClimbing(s: MumuState, input: EngineInput, dt: number, rng: Rng): MumuState {
+  const { field } = input;
   const ledge = s.climbLedge;
-  if (!ledge) return startFall(s); // cannot happen via startClimb; fail safe, not silent: the cat drops
-  const y = s.y - CLIMB_SPEED_PX_S * dt;
-  if (y > s.climbTargetY) return { ...s, y };
-  return startHang({ ...s, y: s.climbTargetY }, ledge, input.field, rng);
+  const side = s.climbSide;
+  if (!ledge || side === null) return startFall(s); // cannot happen via startClimb; fail safe, not silent: the cat drops
+  const flush = { ...s, x: edgeX(field, side) }; // stays flush against the edge, even if the window is resized
+  const y = s.y - climbSpeed(field.size) * dt;
+  if (y > s.climbTargetY) return { ...flush, y };
+  return startHang({ ...flush, y: s.climbTargetY }, ledge, field, rng); // front-view hang strip from here on
 }
 
 export function step(state: MumuState, input: EngineInput, dt: number, rng: Rng): MumuState {

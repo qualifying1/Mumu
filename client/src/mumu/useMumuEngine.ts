@@ -4,7 +4,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { db, DEFAULT_SETTINGS } from "../db/db.ts";
 import { BUBBLE_S } from "./constants.ts";
-import { createMumuState, forceAnim, step, type Effect, type MumuState } from "./engine.ts";
+import { createMumuState, forceAnim, startClimbWalk, step, type Effect, type MumuState } from "./engine.ts";
 import type { MumuAction } from "./gesture.ts";
 import { mumuScale, playfieldFor, worldForScreen, type Playfield, type World, type WorldScreen } from "./layout.ts";
 import { localDateKey, readTimeMessage } from "./readTime.ts";
@@ -156,10 +156,27 @@ export function useMumuEngine({ screen, calm }: UseMumuEngineOptions) {
     interactedRef.current = true;
   }, []);
 
+  /** The "go climb" idle choice on demand (lab button): walk to the nearer edge and climb it, or turn around if nothing is above. */
+  const goClimb = useCallback(() => {
+    const { world, field, parkX } = readWorld(screenRef.current);
+    const input = {
+      world,
+      field,
+      calm: calmRef.current ?? screenRef.current === "other",
+      reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+      interacted: true,
+      parkAt: parkX,
+    };
+    // Back on the floor first (it may be hanging or falling), then head for the edge.
+    const grounded = forceAnim(stateRef.current, "sit", world, Math.random);
+    stateRef.current = startClimbWalk({ ...grounded, y: world.floorY }, input, Math.random);
+    interactedRef.current = true;
+  }, []);
+
   /** Queue pointer actions for the next frame. */
   const dispatch = useCallback((actions: readonly MumuAction[]) => {
     actionsRef.current.push(...actions);
   }, []);
 
-  return { ...snapshot, bubble, force, dispatch };
+  return { ...snapshot, bubble, force, goClimb, dispatch };
 }

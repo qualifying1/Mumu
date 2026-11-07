@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mumuScale, playfieldFor, READER_PARK_MARGIN_PX, worldForScreen, worldFromFloor } from "./layout.ts";
-import { ANIM_NAMES, frameAt, SPRITES } from "./sprites.ts";
+import { ANIM_NAMES, frameAt, isMirrored, SPRITES } from "./sprites.ts";
 
 describe("mumuScale", () => {
   it("is x3 from 768 px wide and x2 below, always an integer", () => {
@@ -78,6 +78,16 @@ describe("sprite manifest", () => {
   });
   it("clamps a non-looping animation to its last frame", () => {
     expect(frameAt({ frames: 3, fps: 4, loop: false }, 10)).toBe(2);
+  });
+});
+
+describe("climb art", () => {
+  it("is a 5-frame back view at 8 fps that is never mirrored; everything else mirrors when facing left", () => {
+    expect(SPRITES.climb).toEqual({ frames: 5, fps: 8, loop: true });
+    expect(isMirrored("climb", -1)).toBe(false);
+    expect(isMirrored("climb", 1)).toBe(false);
+    expect(isMirrored("walk", -1)).toBe(true);
+    expect(isMirrored("hang", 1)).toBe(false);
   });
 });
 

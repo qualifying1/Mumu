@@ -19,11 +19,16 @@ export const SPRITES: Record<AnimName, SpriteAnim> = {
   tailwag: { frames: 4, fps: 8, loop: true },
   loaf: { frames: 3, fps: 3, loop: true },
   yarn: { frames: 6, fps: 8, loop: true },
-  climb: { frames: 4, fps: 8, loop: true },
+  climb: { frames: 5, fps: 8, loop: true }, // back view, never mirrored (see isMirrored)
   hang: { frames: 3, fps: 4, loop: true },
   held: { frames: 2, fps: 4, loop: true },
   meow: { frames: 3, fps: 6, loop: true },
 };
+
+/** Left-facing is the mirrored right-facing art, except the climb: it is a back view, the same on both edges. */
+export function isMirrored(anim: AnimName, facing: 1 | -1): boolean {
+  return anim !== "climb" && facing === -1;
+}
 
 export function spriteUrl(name: AnimName): string {
   return `${import.meta.env.BASE_URL}mumu/${name}.png`;

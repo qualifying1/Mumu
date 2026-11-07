@@ -8,15 +8,16 @@ export const IDLE_MAX_S = 10;
 /** Yarn only after this long without any interaction. */
 export const YARN_AFTER_IDLE_S = 20;
 
-export type IdleChoice = "walk" | "sit" | "loaf" | "tailwag" | "yarn";
+export type IdleChoice = "walk" | "sit" | "loaf" | "tailwag" | "yarn" | "climb";
 
-/** Weights from F8 (30 / 20 / 20 / 15 / 15). */
+/** Weights from F8 (30 / 20 / 20 / 15 / 15), plus "go climb" at 15 (Home only, after CLIMB_AFTER_IDLE_S idle). */
 export const IDLE_WEIGHTS: Record<IdleChoice, number> = {
   walk: 30,
   sit: 20,
   loaf: 20,
   tailwag: 15,
   yarn: 15,
+  climb: 15,
 };
 
 /** Calm idle life on other tabs and under reduced motion. */
@@ -33,7 +34,7 @@ export const WIDE_BREAKPOINT_PX = 768;
 export const SCALE_WIDE = 3;
 export const SCALE_NARROW = 2;
 
-export const CHOICE_ANIM: Record<Exclude<IdleChoice, "walk">, AnimName> = {
+export const CHOICE_ANIM: Record<Exclude<IdleChoice, "walk" | "climb">, AnimName> = {
   sit: "sit",
   loaf: "loaf",
   tailwag: "tailwag",
@@ -63,9 +64,12 @@ export const HANG_MAX_S = 6;
 
 /** Released with the feet centre this close to a side edge of the screen: climb. */
 export const EDGE_CATCH_PX = 24;
-export const CLIMB_SPEED_PX_S = 60;
-/** A walk that is started has this chance to head for a screen edge (when a climb is possible). */
-export const CLIMB_EDGE_WALK_CHANCE = 0.25;
+/** Climb speed at x3 in px/s; it scales with the sprite scale (x2 climbs at 2/3 of this) so it looks the same. */
+export const CLIMB_SPEED_AT_X3_PX_S = 40;
+/** A walk that is started has this chance to head for a screen edge: climb it, or turn around if nothing is above. */
+export const EDGE_WALK_CHANCE = 0.2;
+/** The "go climb" idle choice needs this long without interaction. */
+export const CLIMB_AFTER_IDLE_S = 10;
 
 /** Petting: 2+ taps within this window, or a stroke of the cursor across Mumu. */
 export const PET_TAP_WINDOW_S = 1.5;

@@ -1,7 +1,10 @@
 // C2 engine tests: drag, swing, drop, hang, climb, tap, pet.
 import { describe, expect, it } from "vitest";
 import {
-  CLIMB_SPEED_PX_S,
+  CLIMB_AFTER_IDLE_S,
+  CLIMB_SPEED_AT_X3_PX_S,
+  IDLE_WEIGHTS,
+  WALK_MIN_DISTANCE_PX,
   EDGE_CATCH_PX,
   GRAVITY_PX_S2,
   HANG_CATCH_PX,
@@ -12,7 +15,7 @@ import {
   SWING_MAX_DEG,
   TAP_MEOW_S,
 } from "./constants.ts";
-import { createMumuState, forceAnim, hangFeetY, step, type EngineInput, type MumuState, type Rng } from "./engine.ts";
+import { climbSpeed, createMumuState, forceAnim, hangFeetY, pickIdleChoice, startClimbWalk, step, type EngineInput, type MumuState, type Rng } from "./engine.ts";
 import type { MumuAction } from "./gesture.ts";
 import type { Playfield, World } from "./layout.ts";
 
@@ -214,17 +217,17 @@ describe("climb", () => {
     expect(s.facing).toBe(1);
     const y0 = s.y;
     s = run(s, 1);
-    expect(s.y).toBeCloseTo(y0 - CLIMB_SPEED_PX_S, 0);
+    expect(s.y).toBeCloseTo(y0 - climbSpeed(field.size), 0);
     for (let i = 0; i < 60 * 10 && s.mode === "climbing"; i++) s = act(s);
     expect(s.mode).toBe("hanging");
     expect(s.y).toBe(hangFeetY(ledge, field.size));
     expect(s.anim).toBe("hang");
   });
 
-  it("the left edge mirrors the climb", () => {
+  it("the left edge climbs flush against the left edge", () => {
     const s = act(held(5, 450), [{ type: "release" }]);
     expect(s.mode).toBe("climbing");
-    expect(s.facing).toBe(-1);
+    expect(s.anim).toBe("climb");
     expect(s.x).toBe(field.size / 2);
   });
 
@@ -250,7 +253,7 @@ describe("climb", () => {
   const wide: World = { minX: 32, maxX: 568, floorY: 600 };
 
   it("walking into a screen edge climbs it, but never on other tabs", () => {
-    const base: MumuState = { ...createMumuState(wide, seq(0)), anim: "walk", x: 560, walkTargetX: 568, climbAfterWalk: 1 };
+    const base: MumuState = { ...createMumuState(wide, seq(0)), anim: "walk", x: 560, walkTargetX: 568 };
     const s = step(base, { ...input, world: wide }, 1, seq(0.5));
     expect(s.mode).toBe("climbing");
     expect(s.facing).toBe(1);
@@ -282,6 +285,143 @@ describe("climb", () => {
         expect(s.mode).toBe("ground");
       }
     }
+  });
+});
+
+describe("edge walking and the go-climb idle choice", () => {
+  const wide: World = { minX: 32, maxX: 568, floorY: 600 };
+  const noLedges: Playfield = { ...field, ledges: [] };
+  const walking = (x: number, target: number): MumuState => ({ ...createMumuState(wide, seq(0)), anim: "walk", x, walkTargetX: target });
+
+  it("climbs at 40 px/s at x3, scaled down with the sprite at x2", () => {
+    expect(CLIMB_SPEED_AT_X3_PX_S).toBe(40);
+    expect(climbSpeed(96)).toBeCloseTo(40);
+    expect(climbSpeed(64)).toBeCloseTo((40 * 2) / 3);
+  });
+
+  it("walking into the right or left edge with a ledge above: climbs it", () => {
+    const right = step(walking(560, 568), { ...input, world: wide }, 1, seq(0.5));
+    expect(right.mode).toBe("climbing");
+    expect(right.x).toBe(field.bounds.right - field.size / 2);
+    const left = step(walking(40, 32), { ...input, world: wide }, 1, seq(0.5));
+    expect(left.mode).toBe("climbing");
+    expect(left.x).toBe(field.size / 2);
+  });
+
+  it("stays flush against the edge all the way up, even if the screen is resized", () => {
+    let s = step(walking(560, 568), { ...input, world: wide }, 1, seq(0.5));
+    s = run(s, 1);
+    expect(s.x).toBe(568);
+    const narrower: Playfield = { ...field, bounds: { ...field.bounds, right: 500 } };
+    s = act(s, [], { world: wide, field: narrower });
+    expect(s.x).toBe(500 - field.size / 2);
+  });
+
+  it("switches to the front-view hang strip when it reaches the ledge", () => {
+    let s = step(walking(560, 568), { ...input, world: wide }, 1, seq(0.5));
+    expect(s.anim).toBe("climb");
+    for (let i = 0; i < 60 * 20 && s.mode === "climbing"; i++) s = act(s, [], { world: wide });
+    expect(s.mode).toBe("hanging");
+    expect(s.anim).toBe("hang");
+    expect(s.y).toBe(hangFeetY(ledge, field.size));
+  });
+
+  it("with no ledge above, walking into an edge just turns around and walks back", () => {
+    const right = step(walking(560, 568), { ...input, world: wide, field: noLedges }, 1, seq(0.5));
+    expect(right.mode).toBe("ground");
+    expect(right.facing).toBe(-1);
+    expect(right.anim).toBe("walk");
+    expect(right.x).toBe(568);
+    expect(568 - right.walkTargetX!).toBeGreaterThanOrEqual(WALK_MIN_DISTANCE_PX);
+    const left = step(walking(40, 32), { ...input, world: wide, field: noLedges }, 1, seq(0.5));
+    expect(left.facing).toBe(1);
+    expect(left.walkTargetX! - 32).toBeGreaterThanOrEqual(WALK_MIN_DISTANCE_PX);
+  });
+
+  it("on other tabs, walking into an edge turns around even with a ledge above", () => {
+    const s = step(walking(560, 568), { ...input, world: wide, calm: true }, 1, seq(0.5));
+    expect(s.mode).toBe("ground");
+    expect(s.facing).toBe(-1);
+    expect(s.anim).toBe("walk");
+  });
+
+  it("idle walks reach edges and turn around when nothing is above (never leaving the floor)", () => {
+    const rng = mulberry(21);
+    let s = createMumuState(wide, rng);
+    let turned = 0;
+    let atEdge = false;
+    for (let i = 0; i < 60 * 600; i++) {
+      s = step(s, { ...input, world: wide, field: noLedges }, FRAME, rng);
+      expect(s.mode).toBe("ground");
+      expect(s.x).toBeGreaterThanOrEqual(wide.minX);
+      expect(s.x).toBeLessThanOrEqual(wide.maxX);
+      if (s.x <= wide.minX + 1 || s.x >= wide.maxX - 1) {
+        atEdge = true;
+        if (s.anim === "walk" && s.facing === (s.x <= wide.minX + 1 ? 1 : -1)) turned++;
+      }
+    }
+    expect(atEdge).toBe(true);
+    expect(turned).toBeGreaterThan(0);
+  });
+
+  describe("go climb", () => {
+    const base = { calm: false, reducedMotion: false, canClimb: true };
+    const share = (idleFor: number, opts: Partial<typeof base> = {}) => {
+      const rng = mulberry(3);
+      let n = 0;
+      for (let i = 0; i < 20000; i++) if (pickIdleChoice(rng, { ...base, ...opts, idleFor }) === "climb") n++;
+      return n / 20000;
+    };
+
+    it("is a 15 weight choice after 10 s idle", () => {
+      expect(IDLE_WEIGHTS.climb).toBe(15);
+      expect(CLIMB_AFTER_IDLE_S).toBe(10);
+      expect(share(CLIMB_AFTER_IDLE_S)).toBeCloseTo(0.15, 1); // 15 of 100 before yarn joins at 20 s
+    });
+
+    it("is never offered before 10 s, without a climb, on other tabs, or with reduced motion", () => {
+      expect(share(CLIMB_AFTER_IDLE_S - 0.1)).toBe(0);
+      expect(share(999, { canClimb: false })).toBe(0);
+      expect(share(999, { calm: true })).toBe(0);
+      expect(share(999, { reducedMotion: true })).toBe(0);
+    });
+
+    it("walks to the nearer edge and climbs it", () => {
+      for (const [x, edge] of [
+        [500, 568],
+        [100, 32],
+      ] as const) {
+        const start: MumuState = { ...createMumuState(wide, seq(0)), x, idleFor: 12, nextChoiceIn: 0.01 };
+        // rng: next-interval roll, then the choice roll 0.95 * 100 = 95 -> past walk 30, sit 20, loaf 20, tailwag 15, into climb
+        let s = step(start, { ...input, world: wide }, FRAME, seq(0.5, 0.95));
+        expect(s.anim).toBe("walk");
+        expect(s.walkTargetX).toBe(edge);
+        expect(s.facing).toBe(edge > x ? 1 : -1);
+        for (let i = 0; i < 60 * 20 && s.mode === "ground"; i++) s = act(s, [], { world: wide });
+        expect(s.mode).toBe("climbing");
+        expect(s.x).toBe(edge === 568 ? 568 : field.size / 2);
+      }
+    });
+
+    it("startClimbWalk with no ledge above still walks to the edge, then turns around", () => {
+      const start = createMumuState(wide, seq(0));
+      let s = startClimbWalk({ ...start, x: 400 }, { ...input, world: wide, field: noLedges }, seq(0.5));
+      expect(s.walkTargetX).toBe(568);
+      for (let i = 0; i < 60 * 20 && s.x < 568; i++) s = act(s, [], { world: wide, field: noLedges });
+      expect(s.mode).toBe("ground");
+      expect(s.facing).toBe(-1);
+    });
+
+    it("startClimbWalk standing at the edge climbs at once", () => {
+      const s = startClimbWalk({ ...createMumuState(wide, seq(0)), x: 568 }, { ...input, world: wide }, seq(0.5));
+      expect(s.mode).toBe("climbing");
+    });
+
+    it("startClimbWalk sits if the floor doesn't reach a screen edge", () => {
+      const s = startClimbWalk(createMumuState(world, seq(0)), input, seq(0.5));
+      expect(s.mode).toBe("ground");
+      expect(s.anim).toBe("sit");
+    });
   });
 });
 
