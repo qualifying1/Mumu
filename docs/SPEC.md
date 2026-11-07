@@ -2,7 +2,7 @@
 
 Data shapes and the Mumu bridge are in `CONTRACT.md`. The look of the app is in `DESIGN.md`, and the art requirements are in `ASSETS.md`. Rationale is in `PLAN.md`. This file holds **behaviour and acceptance criteria only.**
 
-**Theme:** *digital sidekick*. **Mumu**, a pixel-art orange cat, lives in the app, reads along with you, voices the story's narration, reacts to scenes, and makes you take breaks.
+**Theme:** *digital sidekick*. **Mumu**, a pixel-art orange cat, lives in the app, reads along with you, reacts to scenes, and makes you take breaks.
 
 **Core features:**
 1. Offline reading of downloaded (imported and processed) chapters
@@ -13,8 +13,8 @@ Data shapes and the Mumu bridge are in `CONTRACT.md`. The look of the app is in 
 1. Home: Mumu walks on the coffee desk below the bookshelf. Drag Mumu (it swings), drop it on a shelf (it hangs), then pet it (hearts and a purr).
 2. **Add** tab: import chapter 1 → processing ("Mumu is reading the panels…").
 3. Read: distinct voices, the music shifts, SFX hit. Mumu reacts in the corner (sweating in tense scenes, hyped in fights).
-4. **Voices** tab: tune a voice profile, preview it, re-voice the chapter.
-5. Open chapter 2: Mumu presents a "Previously…" recap in its own voice, and the characters keep their voices.
+4. **Voices** tab: tune a voice profile and preview it (it affects only characters created afterwards).
+5. Open chapter 2: Mumu presents a "Previously…" bubble while the narrator voice plays the recap, and the characters keep their voices.
 6. With the reading limit set to 1 min in Profile, Mumu won't stop meowing until you take a break.
 7. Airplane mode: everything above still works.
 
@@ -60,10 +60,10 @@ Data shapes and the Mumu bridge are in `CONTRACT.md`. The look of the app is in 
 - ✅ Swiping the desk and tapping books stay in sync, search filters live, and the layout works at 390 px and 1280 px.
 
 ## F6 Voices tab
-- **Voice profiles:** 30 premade profiles (3 per slot) grouped by slot. Each has a voice (dropdown of provider voices from DECISIONS), style (text), speed (0.8–1.2), pitch (slider, −6..+6 semitones, step 1, next to speed), and **Preview**, which calls `POST /preview` with a fixed sample line and uses the current speed and pitch. Edits save immediately. Speed and pitch changes re-encode only (CONTRACT §9). `narrator_1` is shown as "Mumu".
-- **Cast:** a series picker, then each character's name, description, profile dropdown, and a Preview that plays their first stored line.
-- **Re-voice chapter** re-runs F2 for the selected chapter.
-- ✅ Retune a profile → preview sounds different → re-voice → that profile's characters change and nobody else does. Chapter 2 reuses existing profiles.
+- **Voice profiles:** 30 premade profiles (3 per slot) grouped by slot. Each has a voice (dropdown of provider voices from DECISIONS), style (text), speed (0.8–1.2), pitch (slider, −6..+6 semitones, step 1, next to speed), and **Preview**, which calls `POST /preview` with a fixed sample line and uses the current speed and pitch. Edits save immediately. Speed and pitch changes re-encode only (CONTRACT §9). `narrator_1` is shown as "Narrator" (it is not Mumu).
+- **Cast:** a series picker, then each character's name, description, voice/style/speed/pitch controls, and a Preview that plays their first stored line. Editing a character's voice (voice, style, speed, pitch) changes **future chapters only**.
+- A chapter is voiced once, at processing time. A character keeps the `voice` snapshot it was created with (CONTRACT §3); editing a profile only affects characters created afterwards. Already-generated audio is never regenerated, and there is no re-voice button.
+- ✅ Retune a profile → preview sounds different → process a chapter with a new character → only that new character uses the retuned voice. Existing characters, and already-generated audio, are unchanged.
 
 ## F7 Profile tab
 - Avatar: upload an image (stored as a blob and shown pixelated) or the default Mumu face. Editable name.
@@ -87,7 +87,7 @@ Mumu is rendered at an **integer scale** of the sprite (×3 at ≥ 768 px wide, 
 | Scene reactions (Reader) | `setMood` changes (debounced 4 s) | calm → loaf · tense → sit + ❗ · mystery → sit + ❓ · battle → fast tail wag + ❗ · climax → tail wag + ✨ · romance → sit + 💗 · sad → loaf + 💧 · comedic → yarn |
 | Other tabs (Add, Voices, Profile) | screen is `other` | Floor = just above the bottom nav (`data-mumu-avoid`). Calmer idle life: walk, sit and loaf only. Mumu joins you everywhere. |
 | Reader parking | in the reader | Sits small in a corner (default bottom-right, outside the pages' bubbles). Drag to another corner and it remembers. No wandering. |
-| Recap | `showRecap` when opening chapter N > 1 | Mumu's bubble shows "Previously…" and plays the recap (Mumu's voice). Dismissible. |
+| Recap | `showRecap` when opening chapter N > 1 | Mumu's bubble shows "Previously…" and while the narrator voice plays the recap. Dismissible. |
 | Long-reading alarm | continuous reading session ≥ `limitMinutes` | Mumu walks to bottom-centre and meows every 2.5 s (rotating meow1–3) with the bubble "Mrrow! Break time? (45 min)" and buttons **Take a break** (→ `onBreakRequested`, home, session reset) and **Snooze N min**. With master audio or Mumu sounds off: bubbles only. |
 | Hidden | Mumu visible = off | Nothing rendered; the timer still runs |
 | Reduced motion | `prefers-reduced-motion` | No wandering or climbing; sit/loaf only; drag still works |
@@ -105,6 +105,6 @@ Mumu is rendered at an **integer scale** of the sprite (×3 at ≥ 768 px wide, 
 Accounts, social features, scraping, Mihon extensions, overlay mode, generated music, right-to-left manga, a second TTS provider, a chat assistant.
 
 ## Stretch (only after I2 passes)
-- **S1:** Tap a bubble to replay it; long-press to reassign the speaker (then re-voice).
+- **S1:** Tap a bubble to replay it; long-press to reassign the speaker (the cue's audio is not regenerated).
 - **S2:** "New face!" Mumu bubble when a character speaks for the first time.
 - **S3:** Credits plus a Stripe test checkout.
