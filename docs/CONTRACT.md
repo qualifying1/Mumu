@@ -9,7 +9,7 @@ This is the single source of truth. M1 turns it into `shared/` (types + zod) plu
 ## 1. Conventions
 - **Coordinates:** a position on a page is `pageIndex` (0-based) plus fractions (0–1) of *that page's* width and height. Never use pixels.
 - **Box:** `{ x0, y0, x1, y1 }`, page fractions, with `x0 < x1` and `y0 < y1`. The **anchor** is the box's vertical centre; a cue fires when its anchor crosses the read line.
-- **IDs:** strings. The server generates IDs for cues, regions, audio and new characters (`chr_…`). The client generates IDs for series and chapters. Voice profile IDs are fixed: `<slot>_<1|2>`.
+- **IDs:** strings. The server generates IDs for cues, regions, audio and new characters (`chr_…`). The client generates IDs for series and chapters. Voice profile IDs are fixed: `<slot>_<1|2|3>`.
 - **Errors:** every non-2xx response has the body `{ error: string, detail?: string }`.
 
 ## 2. Enums (the prompts must use exactly these)
@@ -25,15 +25,16 @@ This is the single source of truth. M1 turns it into `shared/` (types + zod) plu
 | `JobState` | `queued`, `slicing`, `analyzing`, `reasoning`, `casting`, `voicing`, `packaging`, `done`, `failed` |
 
 ## 3. Voice profiles and characters
-**VoiceProfile** (20 premade profiles: 10 slots × 2. The defaults come from the roster in `docs/DECISIONS.md`. The user tunes them in the Voices tab.)
+**VoiceProfile** (30 premade profiles: 10 slots × 3. The defaults come from the roster in `docs/DECISIONS.md`. The user tunes them in the Voices tab.)
 | Field | Type | Notes |
 |---|---|---|
-| `id` | string | `<slot>_1` or `<slot>_2` |
+| `id` | string | `<slot>_1`, `<slot>_2` or `<slot>_3` |
 | `slot` | VoiceSlot | |
 | `label` | string | e.g. "Young Hero A". **`narrator_1` is labelled "Mumu"**, the sidekick's voice. |
 | `voice` | string | Provider voice name |
 | `style` | string | Default delivery style |
-| `speed` | number | 0.8–1.2 |
+| `speed` | number | 0.8–1.2. Applied in the ffmpeg encode step (§9), not by the TTS model. |
+| `pitch` | number | Semitones, integer −6..+6, default 0. Applied in the ffmpeg encode step (§9), not by the TTS model. |
 
 **Character**
 | Field | Type | Notes |
@@ -46,7 +47,7 @@ This is the single source of truth. M1 turns it into `shared/` (types + zod) plu
 | `profileId` | string | Which VoiceProfile voices this character. The user can reassign it in the Voices tab. |
 | `firstSeenChapterId` | string | |
 
-- **Casting rule** (code, not an LLM): for a new character, take the first of `<slot>_1`, `<slot>_2` that this series' cast isn't already using; if both are used, take `<slot>_1`. **The server never modifies existing characters.**
+- **Casting rule** (code, not an LLM): for a new character, take the first of `<slot>_1`, `<slot>_2`, `<slot>_3` that this series' cast isn't already using; if all three are used, take `<slot>_1`. **The server never modifies existing characters.**
 - **Voice resolution for TTS:** `speech`/`thought` lines with a character use that character's profile. Lines with an unknown speaker, `narration`, and the chapter recap use `narrator_1` (Mumu).
 
 ## 4. HTTP API (server, port 8787)
@@ -56,11 +57,11 @@ This is the single source of truth. M1 turns it into `shared/` (types + zod) plu
 | `POST /jobs` | multipart: `pages` = images **in reading order** (client downscales to ≤ 800 px wide, JPEG q≈0.85); `meta` = JSON `{ seriesId, chapterId, cast: Character[], profiles: VoiceProfile[] }` | `202 { jobId }` |
 | `GET /jobs/:id` | — | `{ state: JobState, progress: 0..1, message, error? }` |
 | `GET /jobs/:id/package` | — | `200 ChapterPackage` once done · `409` if not done · `404` if unknown or expired |
-| `POST /preview` | JSON `{ profile: VoiceProfile, text }` (text ≤ 200 chars) | `200 audio/mpeg` (cached like any TTS clip) |
+| `POST /preview` | JSON `{ profile: VoiceProfile, text }` (text ≤ 200 chars) | `200 audio/mpeg` (the raw TTS clip is cached like any other; the profile's speed and pitch are applied at encode, §9) |
 
 - Jobs are in memory only, and a package is kept for 30 min after `done`. The client polls every 1.5 s and offers Retry after a 404.
 - CORS allows the origins listed in `CORS_ORIGIN` (comma-separated). The dev default is `:5173`, `:5174`, and `:4173` (the production preview).
-- Re-voicing (after editing a profile or a character's profile) is a new `POST /jobs`. Vision and reasoning come from the cache, and only the changed lines get new TTS.
+- Re-voicing (after editing a profile or a character's profile) is a new `POST /jobs`. Vision and reasoning come from the cache. Only lines whose voice, style or text changed get new TTS; a change to speed or pitch alone only re-encodes cached clips (§9).
 
 ## 5. ChapterPackage
 | Field | Type | Notes |
@@ -116,9 +117,11 @@ Client (`client/.env.example`): `VITE_API_URL=http://localhost:8787`
 |---|---|
 | Vision result per segment | model + prompt version + segment bytes + cast names/descriptions |
 | Reasoning result per chapter | model + prompt version + transcript + cast ids/names/descriptions (**not** voices) |
-| TTS clip | model + voice + style string + speed + text |
+| TTS clip (raw WAV) | model + voice + style string + text. **Not** speed or pitch. |
 
 Writes are atomic (temp file, then rename). Bump the prompt version whenever a prompt changes.
+
+**Speed and pitch are applied at the ffmpeg encode step** (raw WAV → mono MP3), never by the TTS call. With `r = 2^(pitch/12)` and the TTS PCM sample rate (24000 Hz), the filter chain is `asetrate=24000*r, aresample=24000, atempo=speed/r`. Changing a profile's pitch or speed therefore re-encodes the cached WAV and makes **no new TTS calls**. (With speed 0.8–1.2 and pitch ±6, `speed/r` stays within 0.57–1.70, inside `atempo`'s 0.5–2.0 range.)
 
 ## 10. Mumu bridge (client-internal interface between Lane B and Lane C)
 `client/src/mumu/bridge.ts`. MAIN creates it in M1; Lane C owns it after that, but **the API below doesn't change** without a contract commit.

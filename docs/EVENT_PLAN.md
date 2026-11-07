@@ -17,7 +17,7 @@ Milestones are in `TASKS.md`, session handling is in `WORKFLOW.md`, and art is i
 
 **Track 2, you (during M0, ~30 min), filling in `DECISIONS.md`:**
 - [ ] AI Studio: create the key, note your free-tier RPM/RPD, pick the vision + TTS models, and run one TTS style test (how does it take the style? See PROMPTS §3).
-- [ ] Voice roster: **narrator_1 = Mumu** first, then one voice per slot. Slot voice 2 can start as a copy of voice 1 with a different style; refine it in the Voices tab later.
+- [ ] Voice roster: **narrator_1 = Mumu** first, then one voice per slot. Slot voices 2 and 3 can start as a copy of voice 1 with a different pitch; refine them in the Voices tab later.
 - [ ] Demo comic: 2 consecutive chapters → `~/fallhacks-assets/ch1/`, `ch2/` (e.g. Pepper&Carrot, CC BY; check the license).
 - [ ] Palette (lospec) and fonts (Pixelify Sans + Press Start 2P woff2). Write both in DECISIONS and DESIGN.
 

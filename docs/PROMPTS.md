@@ -41,6 +41,8 @@ Code, not the model, converts `startOrder`/`endOrder` into `{pageIndex, y}` usin
 
 style string = `<character.style>, <emotion phrase>, <delivery phrase>`
 
+The style goes in `speech_metadata.style`; the text stays verbatim. (Confirm the exact SDK shape with docs-researcher at A3.) Speed and pitch are **not** part of the TTS request: they are applied in the ffmpeg encode step (CONTRACT §9).
+
 | Emotion | Phrase | | Delivery | Phrase |
 |---|---|---|---|---|
 | neutral | "natural" | | normal | "" (omit) |

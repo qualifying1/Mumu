@@ -60,7 +60,7 @@ Data shapes and the Mumu bridge are in `CONTRACT.md`. The look of the app is in 
 - ✅ Swiping the desk and tapping books stay in sync, search filters live, and the layout works at 390 px and 1280 px.
 
 ## F6 Voices tab
-- **Voice profiles:** 20 premade profiles grouped by slot. Each has a voice (dropdown of provider voices from DECISIONS), style (text), speed (0.8–1.2), and **Preview**, which calls `POST /preview` with a fixed sample line. Edits save immediately. `narrator_1` is shown as "Mumu".
+- **Voice profiles:** 30 premade profiles (3 per slot) grouped by slot. Each has a voice (dropdown of provider voices from DECISIONS), style (text), speed (0.8–1.2), pitch (slider, −6..+6 semitones, step 1, next to speed), and **Preview**, which calls `POST /preview` with a fixed sample line and uses the current speed and pitch. Edits save immediately. Speed and pitch changes re-encode only (CONTRACT §9). `narrator_1` is shown as "Mumu".
 - **Cast:** a series picker, then each character's name, description, profile dropdown, and a Preview that plays their first stored line.
 - **Re-voice chapter** re-runs F2 for the selected chapter.
 - ✅ Retune a profile → preview sounds different → re-voice → that profile's characters change and nobody else does. Chapter 2 reuses existing profiles.
