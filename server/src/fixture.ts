@@ -48,7 +48,7 @@ function parseArgs(argv: string[]): { folder: string; castFiles: string[] } {
   return { folder: path.resolve(base, positional[0]!), castFiles };
 }
 
-/** `order. [speaker] text`; speaker is the character's name, "Mumu" for narration/unknown, SFX for sound effects. */
+/** `order. [speaker] text`; speaker is the character's name, "Narrator" for narration, "Unknown" when no speaker could be told, SFX for sound effects. */
 export function transcriptLines(lines: readonly MergedLine[], draft: DraftPackage, cast: readonly Character[]): string[] {
   const names = new Map([...cast, ...draft.newCharacters].map((c) => [c.id, c.name]));
   return draft.cues.map((cue, i) => {

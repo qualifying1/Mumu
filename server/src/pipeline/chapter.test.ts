@@ -146,6 +146,12 @@ describe("reasonChapter", () => {
     expect(generate).toHaveBeenCalledTimes(1);
   });
 
+  it("never mentions Mumu: narration and the recap come from a background storyteller", () => {
+    const prompt = buildReasonPrompt(LINES, []);
+    expect(prompt).not.toMatch(/mumu|cat/i);
+    expect(prompt).toContain("The narrator is not a character");
+  });
+
   it("puts the cast and transcript in the prompt", () => {
     const prompt = buildReasonPrompt(LINES, [existing("chr_a", "male_deep_1")]);
     expect(prompt).toContain("chr_a | chr_a | d");

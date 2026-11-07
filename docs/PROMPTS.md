@@ -24,7 +24,7 @@ Inputs sent with this prompt: the segment image, the KNOWN CAST list (id, name, 
 >
 > List items in reading order: top to bottom, and left to right within the same row. Ignore watermarks, credits, page numbers, logos, and signs that are part of the background unless a character reads them aloud. Ignore all text on credits, donation, patron, sponsor, license or promotional pages (thank-you lists, "support the author" notes, website addresses), even when it is lettered like narration; return an empty items list for such a slice. If the slice contains no text, return an empty list.
 
-## 2. Reasoning prompt (per chapter, text only). Version: `reason-v1`
+## 2. Reasoning prompt (per chapter, text only). Version: `reason-v2` (v2: the recap is told by a background storyteller, not Mumu; narration is not a character)
 
 Inputs: KNOWN CAST (id, name, description), and the chapter transcript as numbered lines: `order | kind | text | speakerHint | speakerCastId | segment mood/intensity`.
 
@@ -33,7 +33,9 @@ Inputs: KNOWN CAST (id, name, description), and the chapter transcript as number
 > 1. **Speakers.** For every speech or thought line, choose a speaker: a known cast id, or a new character key like `new_1`. Use the same key every time that new character speaks. Use `speakerCastId` and `speakerHint` as evidence, along with the conversation flow: replies alternate, and a character addressed by name is usually the *listener*, not the speaker. If you cannot tell, use null.
 > 2. **New characters.** For each new key give: `name` (a real name if the dialogue reveals it, otherwise a short descriptive label), `description` (visual, from the hints, for recognizing them in later chapters), and `voiceSlot` (one of narrator, male_young, male_adult, male_deep, male_elder, female_young, female_adult, female_cold, female_elder, child). Use male_deep for villains and gruff fighters, and female_cold for cold or aloof women.
 > 3. **Music regions.** Split the chapter into contiguous regions covering every line from first to last. Give each region `startOrder`, `endOrder`, `mood`, and `intensity`. Avoid flicker: do not change mood more often than every ~6 lines unless the scene clearly shifts (a fight starts, a reveal, a death). Use `climax` for at most one peak per chapter.
-> 4. **Recap.** Write `recap`: 2–3 short sentences in present tense, summarizing what happened in THIS chapter for a reader who will hear it before the next chapter. Voice: Mumu, a playful orange cat who is the reader's sidekick. Warm, light, at most one cat pun. State only what the transcript shows; no guesses about what comes next.
+> 4. **Recap.** Write `recap`: 2–3 short sentences in present tense, summarizing what happened in THIS chapter for a reader who will hear it just before the next chapter, like the "previously" of a show. Voice: a warm, clear storyteller speaking from the background; third person, never first person, and never as a character of the comic. State only what the transcript shows; no guesses about what comes next.
+>
+> Narration and caption lines belong to the story's unseen narrator. The narrator is not a character: never create a character for it and never give it a speaker.
 
 Code, not the model, converts `startOrder`/`endOrder` into `{pageIndex, y}` using the cue anchors.
 

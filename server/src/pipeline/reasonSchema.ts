@@ -2,7 +2,7 @@ import { IntensitySchema, MoodSchema, VoiceSlotSchema } from "@mumu/shared";
 import { z } from "zod";
 
 /** Bump whenever the reasoning prompt or this schema changes, so cached results are ignored. */
-export const REASON_PROMPT_VERSION = "reason-v1";
+export const REASON_PROMPT_VERSION = "reason-v2";
 
 /** A character the chapter introduces. `key` (new_1, new_2, ...) is local to this response. */
 export const NewCharacterDraftSchema = z.object({
