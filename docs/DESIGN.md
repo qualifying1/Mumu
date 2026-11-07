@@ -2,6 +2,8 @@
 
 The whole app is a pixel-art reading room: a bookshelf on the wall, a coffee desk, and Mumu. **Comic pages are never pixelated**, so the content stays readable. Art sources and specs are in `ASSETS.md`.
 
+Visual target: docs/asset_references/ui_example (layout and mood; use our palette tokens).
+
 ## Pixel rules (follow these everywhere)
 - **One palette.** Pick it on lospec.com (Palette List); suggestion: a warm 16–32 color palette. All UI colors come from it. Fill in the tokens below.
 - **Integer scaling only.** Each sprite is drawn at 2× or 3× with `image-rendering: pixelated`. Never use fractional scales, smoothing, or CSS transitions on size.
