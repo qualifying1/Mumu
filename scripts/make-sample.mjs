@@ -1,4 +1,4 @@
-// Builds fixtures/sample.json: a hand-written ChapterPackage for ch1 pages 0–2 with sine-beep MP3s.
+// Builds fixtures/sample.json: a hand-written ChapterPackage for ch1 pages 0–2 (Pepper&Carrot ep31, files 001–003) with sine-beep MP3s.
 // Run: npm run sample. Needs no API key; uses ffmpeg-static only.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -28,33 +28,45 @@ const CHAPTER = "chapter_sample_1";
 
 const newCharacters = [
   {
-    id: "chr_hero",
+    id: "chr_pepper",
     seriesId: SERIES,
-    name: "Hero",
-    description: "Young man with spiky black hair and a torn red scarf",
+    name: "Pepper",
+    description: "Young witch with a huge floppy witch hat, red vest and plaid cuffs",
+    voiceSlot: "female_young",
+    profileId: "female_young_1",
+    firstSeenChapterId: CHAPTER,
+  },
+  {
+    id: "chr_carrot",
+    seriesId: SERIES,
+    name: "Carrot",
+    description: "Small orange tabby cat who rides on Pepper's shoulder",
     voiceSlot: "male_young",
     profileId: "male_young_1",
     firstSeenChapterId: CHAPTER,
   },
   {
-    id: "chr_mentor",
+    id: "chr_rival",
     seriesId: SERIES,
-    name: "Mentor",
-    description: "Elderly man with a white beard and a wooden staff",
-    voiceSlot: "male_elder",
-    profileId: "male_elder_1",
+    name: "Rival Witch",
+    description: "Stern, scowling duelist in a dark pointed hat with a belt buckle",
+    voiceSlot: "male_deep",
+    profileId: "male_deep_1",
     firstSeenChapterId: CHAPTER,
   },
 ];
 
-// Cue → [freq Hz, duration ms] for its beep (null = no audio). Boxes are page fractions.
+// Pepper&Carrot ep31 (CC BY 4.0, David Revoy; see CREDITS.md): fixtures/ch1/001–003 = pageIndex 0–2.
+// Boxes are page fractions (bubble pixel coords / 1200 x 1660), hand-measured on the real pages.
+// Cue → [freq Hz, duration ms] for its beep (null = no audio).
 const cueSpecs = [
-  { id: "cue_1", kind: "narration", pageIndex: 0, box: [0.1, 0.08, 0.9, 0.16], text: "The mountain village slept under a pale moon.", characterId: null, emotion: "neutral", delivery: "normal", beep: [440, 700] },
-  { id: "cue_2", kind: "speech", pageIndex: 0, box: [0.15, 0.4, 0.7, 0.48], text: "Master, something is coming.", characterId: "chr_hero", emotion: "scared", delivery: "whisper", beep: [523, 600] },
-  { id: "cue_3", kind: "speech", pageIndex: 0, box: [0.3, 0.7, 0.85, 0.78], text: "Steady. Do not draw your sword yet.", characterId: "chr_mentor", emotion: "determined", delivery: "normal", beep: [330, 650] },
-  { id: "cue_4", kind: "sfx", pageIndex: 1, box: [0.2, 0.2, 0.6, 0.3], text: "BOOM!", characterId: null, emotion: "neutral", delivery: "shout", sfxTag: "explosion", beep: null },
-  { id: "cue_5", kind: "speech", pageIndex: 1, box: [0.1, 0.55, 0.65, 0.63], text: "Get down!", characterId: "chr_hero", emotion: "angry", delivery: "shout", beep: [587, 500] },
-  { id: "cue_6", kind: "thought", pageIndex: 2, box: [0.2, 0.35, 0.8, 0.43], text: "I won't let them take this place.", characterId: "chr_hero", emotion: "determined", delivery: "normal", beep: [494, 700] },
+  { id: "cue_1", kind: "narration", pageIndex: 0, box: [0.029, 0.018, 0.253, 0.059], text: "Tenebrume, sacred hill of Chaosah.", characterId: null, emotion: "neutral", delivery: "normal", beep: [440, 900] },
+  { id: "cue_2", kind: "speech", pageIndex: 0, box: [0.465, 0.729, 0.64, 0.771], text: "Take that!", characterId: "chr_pepper", emotion: "angry", delivery: "shout", beep: [523, 600] },
+  { id: "cue_3", kind: "speech", pageIndex: 0, box: [0.704, 0.744, 0.821, 0.768], text: "Amateur!", characterId: "chr_carrot", emotion: "smug", delivery: "normal", beep: [659, 600] },
+  { id: "cue_4", kind: "sfx", pageIndex: 0, box: [0.767, 0.777, 0.883, 0.928], text: "SLAM!", characterId: null, emotion: "neutral", delivery: "shout", sfxTag: "magic", beep: null },
+  { id: "cue_5", kind: "speech", pageIndex: 1, box: [0.754, 0.425, 0.95, 0.473], text: "Gravitationas shieldus!", characterId: "chr_pepper", emotion: "determined", delivery: "shout", beep: [587, 800] },
+  { id: "cue_6", kind: "speech", pageIndex: 2, box: [0.821, 0.054, 0.933, 0.127], text: "Carrot! Plan 7-B!", characterId: "chr_pepper", emotion: "determined", delivery: "shout", beep: [494, 800] },
+  { id: "cue_7", kind: "speech", pageIndex: 2, box: [0.23, 0.448, 0.348, 0.484], text: "Argh!!", characterId: "chr_rival", emotion: "angry", delivery: "shout", beep: [262, 500] },
 ];
 
 const audio = [];
@@ -91,11 +103,12 @@ const pkg = {
   newCharacters,
   cues,
   regions: [
-    { id: "reg_1", start: { pageIndex: 0, y: 0.05 }, end: { pageIndex: 1, y: 0.15 }, mood: "tense", intensity: 2 },
-    { id: "reg_2", start: { pageIndex: 1, y: 0.15 }, end: { pageIndex: 2, y: 0.5 }, mood: "battle", intensity: 3 },
+    // Establishing moonlit chase, then the duel starts at the three-panel row on page 0.
+    { id: "reg_1", start: { pageIndex: 0, y: 0 }, end: { pageIndex: 0, y: 0.42 }, mood: "tense", intensity: 2 },
+    { id: "reg_2", start: { pageIndex: 0, y: 0.42 }, end: { pageIndex: 2, y: 0.7 }, mood: "battle", intensity: 3 },
   ],
   recap: {
-    text: "Mumu remembers: a quiet village, a nervous hero, and a mentor who sensed trouble before anyone else.",
+    text: "Mumu remembers: Pepper and Carrot are dueling a furious rival witch above the moonlit hill of Tenebrume. Pepper survived a blast with a shield spell, and Carrot has just started Plan 7-B.",
     audioId: "aud_recap",
   },
   audio,
