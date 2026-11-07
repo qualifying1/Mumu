@@ -9,6 +9,7 @@ import { db, DEFAULT_SETTINGS } from "../db/db.ts";
 import { subscribe, type Screen } from "./bridge.ts";
 import MumuStage from "./MumuStage.tsx";
 import { useMumuEngine } from "./useMumuEngine.ts";
+import { useReadingTimer, type ReadingTimer } from "./useReadingTimer.ts";
 
 function screenFromPath(pathname: string): Screen {
   if (pathname === "/") return "home";
@@ -31,19 +32,24 @@ function useMumuScreen(): Screen {
   return bridged && bridged.pathname === pathname ? bridged.screen : screenFromPath(pathname);
 }
 
-function MumuActor({ screen }: { screen: Screen }) {
-  const engine = useMumuEngine({ screen });
-  return <MumuStage engine={engine} />;
+function MumuActor({ screen, timer }: { screen: Screen; timer: ReadingTimer }) {
+  const engine = useMumuEngine({ screen, alarm: timer.alarm });
+  const alarm = timer.alarm
+    ? { limitMinutes: timer.config.limitMinutes, snoozeMinutes: timer.config.snoozeMinutes, onBreak: timer.takeBreak, onSnooze: timer.snooze }
+    : null;
+  return <MumuStage engine={engine} alarm={alarm} />;
 }
 
 export default function MumuLayer() {
   const { pathname } = useLocation();
   const screen = useMumuScreen();
+  // The reading timer runs even when Mumu is hidden (F8), so it lives above the early returns. /dev/mumu has its own.
+  const timer = useReadingTimer({ inReader: screen === "reader" });
   // Dexie live query: undefined while loading, and until the settings are seeded (B1) the defaults apply.
   const setting = useLiveQuery(() => db.settings.get("mumu"), []);
   const mumu = setting?.key === "mumu" ? setting.value : DEFAULT_SETTINGS.mumu;
 
   if (pathname.startsWith("/dev/mumu")) return null;
   if (!mumu.visible) return null; // F8 "Hidden": nothing rendered (the reading timer is separate)
-  return <MumuActor screen={screen} />;
+  return <MumuActor screen={screen} timer={timer} />;
 }

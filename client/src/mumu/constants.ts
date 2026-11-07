@@ -85,3 +85,14 @@ export const STROKE_MIN_STEP_PX = 6;
 export const TAP_MEOW_S = 1.2;
 /** How long the read-time speech bubble stays up. */
 export const BUBBLE_S = 3.5;
+
+// ---- C3: reading timer and long-reading alarm (SPEC F8) ----
+
+/** Reading counts only if there was activity within this window. */
+export const ACTIVITY_WINDOW_S = 120;
+/** `readingLog` is written this often while reading. */
+export const LOG_EVERY_S = 15;
+/** The continuous session resets after this long outside the reader. */
+export const SESSION_RESET_OUTSIDE_S = 300;
+/** While the alarm is up, Mumu meows this often, rotating meow1-3. */
+export const ALARM_MEOW_EVERY_S = 2.5;

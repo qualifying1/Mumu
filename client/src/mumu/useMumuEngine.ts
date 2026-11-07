@@ -24,6 +24,8 @@ export interface UseMumuEngineOptions {
   screen: WorldScreen;
   /** Calmer idle life (walk, sit, loaf). Defaults to true on the `other` screen. */
   calm?: boolean;
+  /** The long-reading alarm is ringing (from useReadingTimer). */
+  alarm?: boolean;
 }
 
 function readWorld(screen: WorldScreen): { world: World; field: Playfield; parkX: number | null; scale: number } {
@@ -48,7 +50,7 @@ export interface MumuBubble {
   text: string;
 }
 
-export function useMumuEngine({ screen, calm }: UseMumuEngineOptions) {
+export function useMumuEngine({ screen, calm, alarm = false }: UseMumuEngineOptions) {
   const [snapshot, setSnapshot] = useState<MumuSnapshot>(() => {
     const { world, field, scale } = readWorld(screen);
     return { state: createMumuState(world, Math.random), world, field, scale };
@@ -59,6 +61,8 @@ export function useMumuEngine({ screen, calm }: UseMumuEngineOptions) {
   screenRef.current = screen;
   const calmRef = useRef(calm);
   calmRef.current = calm;
+  const alarmRef = useRef(alarm);
+  alarmRef.current = alarm;
   const interactedRef = useRef(false);
   const actionsRef = useRef<MumuAction[]>([]);
   const soundsRef = useRef<MumuSounds | null>(null);
@@ -129,6 +133,7 @@ export function useMumuEngine({ screen, calm }: UseMumuEngineOptions) {
           interacted: interactedRef.current,
           parkAt: parkX,
           actions,
+          alarm: alarmRef.current,
         },
         dt,
         Math.random,

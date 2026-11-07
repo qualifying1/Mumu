@@ -16,7 +16,28 @@ function emoteUrl(name: string): string {
   return `${import.meta.env.BASE_URL}mumu/emotes/${name}.png`;
 }
 
-export default function MumuStage({ engine }: { engine: Engine }) {
+/** The long-reading alarm bubble (F8): the limit in the text, two buttons. */
+export interface AlarmBubble {
+  limitMinutes: number;
+  snoozeMinutes: number;
+  onBreak: () => void;
+  onSnooze: () => void;
+}
+
+const BUTTON_STYLE: CSSProperties = {
+  minHeight: 36,
+  padding: "4px 10px",
+  background: "Canvas",
+  color: "CanvasText",
+  border: "2px solid CanvasText",
+  boxShadow: "0 2px 0 CanvasText",
+  font: "inherit",
+  whiteSpace: "nowrap",
+  cursor: "pointer",
+  touchAction: "manipulation",
+};
+
+export default function MumuStage({ engine, alarm = null }: { engine: Engine; alarm?: AlarmBubble | null }) {
   const { state, scale, field, bubble, dispatch } = engine;
   const handlers = usePointerGestures(dispatch);
   const size = field.size;
@@ -70,10 +91,25 @@ export default function MumuStage({ engine }: { engine: Engine }) {
         };
         return <img key={e.id} src={emoteUrl(e.kind)} alt="" draggable={false} data-mumu-emote={e.kind} style={style} />;
       })}
-      {bubble && (
-        <div key={bubble.id} role="status" data-mumu-bubble style={bubbleStyle}>
-          {bubble.text}
+      {alarm ? (
+        // The one bubble with buttons: it takes pointer events itself, and only it (plus the sprite).
+        <div role="alertdialog" aria-label="Break time" data-mumu-alarm style={{ ...bubbleStyle, pointerEvents: "auto", maxWidth: 300, touchAction: "manipulation" }}>
+          <div>Mrrow! Break time? ({alarm.limitMinutes} min)</div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
+            <button type="button" data-mumu-break style={BUTTON_STYLE} onClick={alarm.onBreak}>
+              Take a break
+            </button>
+            <button type="button" data-mumu-snooze style={BUTTON_STYLE} onClick={alarm.onSnooze}>
+              Snooze {alarm.snoozeMinutes} min
+            </button>
+          </div>
         </div>
+      ) : (
+        bubble && (
+          <div key={bubble.id} role="status" data-mumu-bubble style={bubbleStyle}>
+            {bubble.text}
+          </div>
+        )
       )}
     </>
   );

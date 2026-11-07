@@ -2,6 +2,7 @@
 // C1: idle life and walking on the floor. C2: drag (swing), drop (gravity), hang, climb, pet, tap.
 // One-shot outputs (sounds, "show the read time") are listed in `state.effects`, rebuilt on every step.
 import {
+  ALARM_MEOW_EVERY_S,
   CALM_CHOICES,
   CHOICE_ANIM,
   CLIMB_AFTER_IDLE_S,
@@ -48,7 +49,7 @@ export interface Emote {
   dx: number;
 }
 
-export type MumuSoundName = "mrrp";
+export type MumuSoundName = "mrrp" | "meow1" | "meow2" | "meow3";
 /** One-shot outputs for the adapter. Rebuilt on every step. */
 export type Effect = { type: "sound"; name: MumuSoundName } | { type: "readTime" };
 
@@ -94,6 +95,12 @@ export interface MumuState {
   /** Seconds left of the tap-reply meow. */
   meowLeft: number;
 
+  /** The long-reading alarm is up: Mumu is at bottom-centre meowing. */
+  alarmOn: boolean;
+  /** Seconds until the next alarm meow, and how many have been made (rotates meow1-3). */
+  alarmMeowIn: number;
+  alarmMeows: number;
+
   emotes: Emote[];
   nextEmoteId: number;
   effects: Effect[];
@@ -111,6 +118,8 @@ export interface EngineInput {
   parkAt?: number | null;
   /** Pointer gestures since the last step, in order. */
   actions?: readonly MumuAction[];
+  /** The long-reading alarm is ringing (from the reading timer). Overrides parking, petting and taps. */
+  alarm?: boolean;
 }
 
 function randomBetween(rng: Rng, lo: number, hi: number): number {
@@ -171,6 +180,9 @@ export function createMumuState(world: World, rng: Rng): MumuState {
     heartIn: 0,
     purring: false,
     meowLeft: 0,
+    alarmOn: false,
+    alarmMeowIn: 0,
+    alarmMeows: 0,
     emotes: [],
     nextEmoteId: 1,
     effects: [],
@@ -406,7 +418,7 @@ function applyActions(s: MumuState, input: EngineInput, rng: Rng): MumuState {
         if (s.mode === "held") s = resolveRelease(s, input, rng);
         break;
       case "tap":
-        if (s.mode === "held") break;
+        if (s.mode === "held" || s.alarmOn) break; // the alarm bubble is the only thing Mumu says now
         if (s.mode === "ground" && s.lastTapAt !== null && s.time - s.lastTapAt <= PET_TAP_WINDOW_S) {
           s = { ...startPet(s), lastTapAt: s.time };
         } else if (s.mode === "ground" && s.petLeft > 0) {
@@ -417,7 +429,7 @@ function applyActions(s: MumuState, input: EngineInput, rng: Rng): MumuState {
         }
         break;
       case "stroke":
-        if (s.mode !== "ground") break;
+        if (s.mode !== "ground" || s.alarmOn) break;
         s = s.petLeft > 0 ? { ...s, petLeft: PET_DURATION_S } : startPet(s);
         break;
     }
@@ -434,13 +446,28 @@ function stepSwing(s: MumuState, dt: number): MumuState {
   return { ...s, angVel: rotation === raw ? angVel : 0, rotation };
 }
 
+/** The alarm: starts when `input.alarm` goes up (clearing petting and walks), meows every ALARM_MEOW_EVERY_S, ends when it drops. */
+function stepAlarm(s: MumuState, input: EngineInput, dt: number, rng: Rng): MumuState {
+  if (!input.alarm) {
+    if (!s.alarmOn) return s;
+    const ended = { ...s, alarmOn: false, nextChoiceIn: randomBetween(rng, IDLE_MIN_S, IDLE_MAX_S) };
+    return s.mode === "ground" ? setAnim(ended, "sit") : ended;
+  }
+  let a = s;
+  if (!a.alarmOn) a = { ...a, alarmOn: true, alarmMeowIn: 0, alarmMeows: 0, petLeft: 0, purring: false, meowLeft: 0, walkTargetX: null };
+  const alarmMeowIn = a.alarmMeowIn - dt;
+  if (alarmMeowIn > 0) return { ...a, alarmMeowIn };
+  const name = `meow${(a.alarmMeows % 3) + 1}` as MumuSoundName;
+  return { ...a, alarmMeowIn: alarmMeowIn + ALARM_MEOW_EVERY_S, alarmMeows: a.alarmMeows + 1, effects: [...a.effects, { type: "sound", name }] };
+}
+
 function stepEmotes(s: MumuState, dt: number): MumuState {
   return { ...s, emotes: s.emotes.map((e) => ({ ...e, age: e.age + dt })).filter((e) => e.age < EMOTE_LIFE_S) };
 }
 
 function stepGround(state: MumuState, input: EngineInput, dt: number, rng: Rng): MumuState {
   const { world, field } = input;
-  const parked = input.parkAt != null;
+  const parked = input.parkAt != null && !state.alarmOn; // the alarm pulls Mumu out of its corner
   // Reduced motion and reader parking both mean: stay put, sit/loaf only.
   const still = input.reducedMotion || parked;
   let s: MumuState = {
@@ -449,6 +476,15 @@ function stepGround(state: MumuState, input: EngineInput, dt: number, rng: Rng):
     x: clamp(parked ? input.parkAt! : state.x, world.minX, world.maxX),
     facing: parked ? -1 : state.facing, // the reader corner is on the right: look into the page
   };
+
+  if (s.alarmOn) {
+    // Walk to bottom-centre (reduced motion: no walking, it is just there) and sit there meowing.
+    const target = clamp((field.bounds.left + field.bounds.right) / 2, world.minX, world.maxX);
+    const move = WALK_SPEED_PX_S * dt;
+    if (input.reducedMotion || Math.abs(target - s.x) <= move) return setAnim({ ...s, x: target, walkTargetX: null }, "meow");
+    const dir = target > s.x ? 1 : -1;
+    return { ...setAnim(s, "walk"), walkTargetX: null, x: s.x + dir * move, facing: dir };
+  }
 
   if (s.petLeft > 0) {
     s = { ...s, petLeft: s.petLeft - dt, heartIn: s.heartIn - dt };
@@ -532,6 +568,7 @@ export function step(state: MumuState, input: EngineInput, dt: number, rng: Rng)
     idleFor: input.interacted || (input.actions?.length ?? 0) > 0 ? 0 : state.idleFor + dt,
   };
   s = stepEmotes(s, dt);
+  s = stepAlarm(s, input, dt, rng);
   s = applyActions(s, input, rng);
 
   switch (s.mode) {
