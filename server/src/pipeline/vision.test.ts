@@ -71,7 +71,7 @@ describe("vision stage", () => {
     await analyzeSegment(seg, 1, ctxWith(generate));
     await analyzeSegment(seg, 1, { ...ctxWith(generate), model: "other-model" });
     const cast = [
-      { id: "chr_1", seriesId: "s", name: "Ann", description: "red ribbon", voiceSlot: "female_young" as const, profileId: "female_young_1", firstSeenChapterId: "c" },
+      { id: "chr_1", seriesId: "s", name: "Ann", description: "red ribbon", voiceSlot: "female_young" as const, profileId: "female_young_1", voice: { voice: "Leda", style: "bright", speed: 1, pitch: 0 }, firstSeenChapterId: "c" },
     ];
     await analyzeSegment(seg, 1, { ...ctxWith(generate), cast });
     expect(generate).toHaveBeenCalledTimes(3);

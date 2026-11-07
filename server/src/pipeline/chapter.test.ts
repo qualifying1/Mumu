@@ -1,4 +1,4 @@
-import { DEFAULT_PROFILES, type Character } from "@mumu/shared";
+import { DEFAULT_PROFILES, snapshotVoice, type Character } from "@mumu/shared";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -55,6 +55,7 @@ const existing = (id: string, profileId: string): Character => ({
   description: "d",
   voiceSlot: "male_deep",
   profileId,
+  voice: { voice: "Algenib", style: "low", speed: 0.95, pitch: 0 },
   firstSeenChapterId: "c0",
 });
 
@@ -165,6 +166,22 @@ describe("casting", () => {
     expect(pickProfileId("male_deep", new Set(["male_deep_1"]), DEFAULT_PROFILES)).toBe("male_deep_2");
     expect(pickProfileId("male_deep", new Set(["male_deep_1", "male_deep_2"]), DEFAULT_PROFILES)).toBe("male_deep_3");
     expect(pickProfileId("male_deep", new Set(["male_deep_1", "male_deep_2", "male_deep_3"]), DEFAULT_PROFILES)).toBe("male_deep_1");
+  });
+
+  it("snapshots the chosen profile's voice onto the character, so later profile edits never reach it", () => {
+    const retuned = DEFAULT_PROFILES.map((p) => (p.id === "male_deep_1" ? { ...p, voice: "Zephyr", pitch: 5 } : p));
+    const make = (profiles: typeof DEFAULT_PROFILES) =>
+      castNewCharacters({
+        drafts: [{ key: "new_1", name: "A", description: "a", voiceSlot: "male_deep" }],
+        usedKeys: new Set(["new_1"]),
+        existingCast: [],
+        profiles,
+        seriesId: "s",
+        chapterId: "c",
+      }).newCharacters[0]!;
+    expect(make(DEFAULT_PROFILES).voice).toEqual(snapshotVoice(DEFAULT_PROFILES.find((p) => p.id === "male_deep_1")!));
+    expect(make(retuned).voice).toMatchObject({ voice: "Zephyr", pitch: 5 });
+    expect(make(retuned).profileId).toBe("male_deep_1");
   });
 
   it("fails loudly when profiles for a slot are missing", () => {
@@ -301,7 +318,7 @@ describe("buildChapterDraft", () => {
       [2, "sfx", null, "explosion", null],
     ]);
     expect(draft.newCharacters).toEqual([
-      { id: "chr_guard", seriesId: "s1", name: "Guard", description: "armored man", voiceSlot: "male_deep", profileId: "male_deep_1", firstSeenChapterId: "ch1" },
+      { id: "chr_guard", seriesId: "s1", name: "Guard", description: "armored man", voiceSlot: "male_deep", profileId: "male_deep_1", voice: snapshotVoice(DEFAULT_PROFILES.find((p) => p.id === "male_deep_1")!), firstSeenChapterId: "ch1" },
     ]);
     expect(draft.regions).toHaveLength(1);
     expect(draft.recap.text).toMatch(/guard/);

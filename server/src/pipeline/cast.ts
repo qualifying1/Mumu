@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
-import { CharacterSchema, type Character, type VoiceProfile, type VoiceSlot } from "@mumu/shared";
+import { CharacterSchema, snapshotVoice, type Character, type VoiceProfile, type VoiceSlot } from "@mumu/shared";
 import { z } from "zod";
 import type { NewCharacterDraft } from "./reasonSchema.js";
 
@@ -43,6 +43,8 @@ export function castNewCharacters(args: {
     if (!args.usedKeys.has(draft.key)) continue;
     const profileId = pickProfileId(draft.voiceSlot, used, args.profiles);
     used.add(profileId);
+    // pickProfileId already proved the profile exists. The snapshot is the character's voice for life (CONTRACT §3).
+    const profile = args.profiles.find((p) => p.id === profileId)!;
     const character: Character = {
       id: newId(),
       seriesId: args.seriesId,
@@ -50,6 +52,7 @@ export function castNewCharacters(args: {
       description: draft.description,
       voiceSlot: draft.voiceSlot,
       profileId,
+      voice: snapshotVoice(profile),
       firstSeenChapterId: args.chapterId,
     };
     newCharacters.push(character);
