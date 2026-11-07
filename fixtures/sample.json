@@ -15,6 +15,12 @@
       "description": "Young witch with a huge floppy witch hat, red vest and plaid cuffs",
       "voiceSlot": "female_young",
       "profileId": "female_young_1",
+      "voice": {
+        "voice": "Leda",
+        "style": "bright, lively",
+        "speed": 1.05,
+        "pitch": 0
+      },
       "firstSeenChapterId": "chapter_sample_1"
     },
     {
@@ -24,6 +30,12 @@
       "description": "Small orange tabby cat who rides on Pepper's shoulder",
       "voiceSlot": "male_young",
       "profileId": "male_young_1",
+      "voice": {
+        "voice": "Puck",
+        "style": "energetic, confident",
+        "speed": 1.05,
+        "pitch": 0
+      },
       "firstSeenChapterId": "chapter_sample_1"
     },
     {
@@ -33,6 +45,12 @@
       "description": "Stern, scowling duelist in a dark pointed hat with a belt buckle",
       "voiceSlot": "male_deep",
       "profileId": "male_deep_1",
+      "voice": {
+        "voice": "Algenib",
+        "style": "low, menacing",
+        "speed": 0.95,
+        "pitch": 0
+      },
       "firstSeenChapterId": "chapter_sample_1"
     }
   ],

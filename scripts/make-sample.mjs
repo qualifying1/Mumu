@@ -1,10 +1,11 @@
 // Builds fixtures/sample.json: a hand-written ChapterPackage for ch1 pages 0–2 (Pepper&Carrot ep31, files 001–003) with sine-beep MP3s.
-// Run: npm run sample. Needs no API key; uses ffmpeg-static only.
+// Run: npm run sample (via tsx, so it can import @mumu/shared). Needs no API key; uses ffmpeg-static only.
 import { spawnSync } from "node:child_process";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import ffmpegPath from "ffmpeg-static";
+import { DEFAULT_PROFILES, snapshotVoice } from "@mumu/shared";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 if (!ffmpegPath) throw new Error("ffmpeg-static has no binary for this platform");
@@ -26,6 +27,13 @@ function beep(freqHz, durationMs) {
 const SERIES = "series_sample";
 const CHAPTER = "chapter_sample_1";
 
+// A character's voice is a snapshot of its profile (CONTRACT §3), taken the same way casting does.
+const voiceOf = (profileId) => {
+  const profile = DEFAULT_PROFILES.find((p) => p.id === profileId);
+  if (!profile) throw new Error(`unknown profile ${profileId}`);
+  return snapshotVoice(profile);
+};
+
 const newCharacters = [
   {
     id: "chr_pepper",
@@ -34,6 +42,7 @@ const newCharacters = [
     description: "Young witch with a huge floppy witch hat, red vest and plaid cuffs",
     voiceSlot: "female_young",
     profileId: "female_young_1",
+    voice: voiceOf("female_young_1"),
     firstSeenChapterId: CHAPTER,
   },
   {
@@ -43,6 +52,7 @@ const newCharacters = [
     description: "Small orange tabby cat who rides on Pepper's shoulder",
     voiceSlot: "male_young",
     profileId: "male_young_1",
+    voice: voiceOf("male_young_1"),
     firstSeenChapterId: CHAPTER,
   },
   {
@@ -52,6 +62,7 @@ const newCharacters = [
     description: "Stern, scowling duelist in a dark pointed hat with a belt buckle",
     voiceSlot: "male_deep",
     profileId: "male_deep_1",
+    voice: voiceOf("male_deep_1"),
     firstSeenChapterId: CHAPTER,
   },
 ];

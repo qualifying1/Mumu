@@ -3,7 +3,7 @@
 // config, so no lane hardcodes a voice name.
 import type { VoiceSlot } from "./enums.js";
 import { VOICE_SLOTS } from "./enums.js";
-import type { VoiceProfile } from "./schemas.js";
+import type { CharacterVoice, VoiceProfile } from "./schemas.js";
 
 /** Gemini TTS prebuilt voices. Feeds the Voices-tab dropdown. */
 export const AVAILABLE_VOICES = [
@@ -29,7 +29,7 @@ export const VOICE_ROSTER: Record<VoiceSlot, RosterSlot> = {
     style: "calm, cinematic",
     speed: 1.0,
     variants: [
-      { label: "Mumu", voice: "Achird", pitch: 0 },
+      { label: "Narrator", voice: "Achird", pitch: 0 },
       { label: "Storyteller", voice: "Sulafat", pitch: 0 },
       { label: "Chronicler", voice: "Sadaltager", pitch: 0 },
     ],
@@ -117,7 +117,7 @@ export const VOICE_ROSTER: Record<VoiceSlot, RosterSlot> = {
   },
 };
 
-/** The 30 premade profiles, ids `<slot>_1..3`. `narrator_1` is Mumu's voice. */
+/** The 30 premade profiles, ids `<slot>_1..3`. `narrator_1` is the narrator voice (not Mumu's). */
 export const DEFAULT_PROFILES: readonly VoiceProfile[] = VOICE_SLOTS.flatMap((slot) =>
   VOICE_ROSTER[slot].variants.map((v, i) => ({
     id: `${slot}_${i + 1}`,
@@ -130,5 +130,10 @@ export const DEFAULT_PROFILES: readonly VoiceProfile[] = VOICE_SLOTS.flatMap((sl
   })),
 );
 
-/** Profile used for narration, unknown speakers and the recap (Mumu). */
+/** Profile used for narration, unknown speakers and the recap (the narrator voice). */
 export const NARRATOR_PROFILE_ID = "narrator_1";
+
+/** The one way to snapshot a profile into a character's voice (CONTRACT §3). Casting and the Voices tab both use it. */
+export function snapshotVoice(profile: Pick<VoiceProfile, "voice" | "style" | "speed" | "pitch">): CharacterVoice {
+  return { voice: profile.voice, style: profile.style, speed: profile.speed, pitch: profile.pitch };
+}
