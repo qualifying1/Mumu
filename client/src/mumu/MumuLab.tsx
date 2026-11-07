@@ -2,14 +2,20 @@
 // stand in for Home so the engine can be watched without the rest of the app.
 // "Fake reader mode" stands in for the reader: Mumu parks in the corner and the reading timer runs
 // with its own limit (the lab never edits settings.wellbeing and never writes the readingLog).
+import { MOODS, type Mood } from "@mumu/shared";
 import { useEffect, useState } from "react";
 import { db } from "../db/db.ts";
-import { notifyActivity, onBreakRequested } from "./bridge.ts";
+import { notifyActivity, onBreakRequested, showRecap } from "./bridge.ts";
+import { MOOD_DEBOUNCE_S } from "./constants.ts";
 import MumuStage from "./MumuStage.tsx";
 import { localDateKey } from "./readTime.ts";
 import { ANIM_NAMES, SPRITES } from "./sprites.ts";
 import { useMumuEngine } from "./useMumuEngine.ts";
+import { useMumuRecap } from "./useMumuRecap.ts";
 import { useReadingTimer } from "./useReadingTimer.ts";
+
+// Lab only: stands in for the previous chapter's recap text; the "voice" is Mumu's meow clip.
+const LAB_RECAP_TEXT = "Kai found the sealed gate beneath the old school and crossed blades with the masked stranger. He survived, barely, and the gate began to hum.";
 
 export default function MumuLab() {
   const [calm, setCalm] = useState(false);
@@ -18,8 +24,12 @@ export default function MumuLab() {
   const [snoozeMinutes, setSnoozeMinutes] = useState(1);
   const [breaks, setBreaks] = useState(0);
 
+  // The bridge mood the lab pretends the reader reports (null = none).
+  const [mood, setMood] = useState<Mood | null>(null);
+
   const timer = useReadingTimer({ inReader: fakeReader, override: { limitMinutes, snoozeMinutes }, log: false });
-  const engine = useMumuEngine({ screen: fakeReader ? "reader" : "home", calm, alarm: timer.alarm, onAlarmPetted: timer.snooze });
+  const recap = useMumuRecap({ active: true, alarm: timer.alarm });
+  const engine = useMumuEngine({ screen: fakeReader ? "reader" : "home", calm, alarm: timer.alarm, onAlarmPetted: timer.snooze, mood, speaking: recap.speaking });
   const { state, scale, force, goClimb } = engine;
 
   // The real app navigates Home on "Take a break" (B's callback); the lab leaves its fake reader instead.
@@ -103,6 +113,27 @@ export default function MumuLab() {
         </span>
       </fieldset>
 
+      <fieldset className="mt-3 flex flex-wrap items-center gap-2 border-2 p-2 text-sm">
+        <legend className="px-1">Reader reactions / recap</legend>
+        {MOODS.map((m) => (
+          <button key={m} type="button" data-testid={`mood-${m}`} className={`border-2 px-2 py-1 ${mood === m ? "font-bold underline" : ""}`} onClick={() => setMood(m)}>
+            {m}
+          </button>
+        ))}
+        <button type="button" data-testid="mood-none" className="border-2 px-2 py-1" onClick={() => setMood(null)}>
+          no mood (leave reader)
+        </button>
+        <button
+          type="button"
+          data-testid="show-recap"
+          className="border-2 px-2 py-1"
+          onClick={() => showRecap({ text: LAB_RECAP_TEXT, audioUrl: `${import.meta.env.BASE_URL}audio/mumu/meow1.mp3` })}
+        >
+          show recap
+        </button>
+        <span className="text-xs opacity-70">Reactions are debounced: at most one every {MOOD_DEBOUNCE_S} s. Drop Mumu in the other half of the fake reader to change its corner.</span>
+      </fieldset>
+
       <pre className="mt-3 text-xs" data-testid="mumu-readout">
         {`mode=${state.mode} anim=${state.anim} frame=${(Math.floor(state.animTime * SPRITES[state.anim].fps) % SPRITES[state.anim].frames) + 1}/${SPRITES[state.anim].frames}\nx=${Math.round(state.x)} y=${Math.round(state.y)} facing=${state.facing} scale=x${scale} rot=${state.rotation.toFixed(1)}° purr=${state.purring}\nnext choice in ${Math.max(0, state.nextChoiceIn).toFixed(1)} s · idle ${state.idleFor.toFixed(0)} s`}
       </pre>
@@ -113,7 +144,7 @@ export default function MumuLab() {
       {/* Fake desk */}
       <div data-mumu-floor className="-mx-4 mt-52 h-6 border-t-4 bg-current/10" />
 
-      <MumuStage engine={engine} alarm={alarm} />
+      <MumuStage engine={engine} alarm={alarm} recap={recap.recap ? { recap: recap.recap, onDismiss: recap.dismiss } : null} />
     </main>
   );
 }

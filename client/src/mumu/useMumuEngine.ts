@@ -4,9 +4,11 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { db, DEFAULT_SETTINGS } from "../db/db.ts";
 import { BUBBLE_S } from "./constants.ts";
+import type { Mood } from "@mumu/shared";
 import { createMumuState, forceAnim, startClimbWalk, step, type Effect, type MumuState } from "./engine.ts";
 import type { MumuAction } from "./gesture.ts";
-import { mumuScale, playfieldFor, worldForScreen, type Playfield, type World, type WorldScreen } from "./layout.ts";
+import { cornerForDrop, mumuScale, playfieldFor, worldForScreen, type ParkCorner, type Playfield, type World, type WorldScreen } from "./layout.ts";
+import { loadParkCorner, saveParkCorner } from "./parkCorner.ts";
 import { localDateKey, readTimeMessage } from "./readTime.ts";
 import { createMumuSounds, type MumuSounds } from "./sounds.ts";
 import type { AnimName } from "./sprites.ts";
@@ -28,9 +30,13 @@ export interface UseMumuEngineOptions {
   alarm?: boolean;
   /** Mumu was petted while the alarm rang: that is the dismissal (the caller snoozes the timer). */
   onAlarmPetted?: () => void;
+  /** The region mood at the read line (from the bridge); null outside the reader. The engine debounces it. */
+  mood?: Mood | null;
+  /** The recap is being presented (Mumu talks). */
+  speaking?: boolean;
 }
 
-function readWorld(screen: WorldScreen): { world: World; field: Playfield; parkX: number | null; scale: number } {
+function readWorld(screen: WorldScreen, corner: ParkCorner): { world: World; field: Playfield; parkX: number | null; scale: number } {
   const scale = mumuScale(window.innerWidth);
   const viewport = { width: window.innerWidth, height: window.innerHeight };
   const floor = document.querySelector("[data-mumu-floor]");
@@ -41,6 +47,7 @@ function readWorld(screen: WorldScreen): { world: World; field: Playfield; parkX
     avoid: avoid ? avoid.getBoundingClientRect() : null,
     viewport,
     scale,
+    corner,
   });
   // Shelf planks only exist on Home; elsewhere there is nothing to hang from or climb to.
   const ledgeRects = screen === "home" ? [...document.querySelectorAll("[data-mumu-ledge]")].map((el) => el.getBoundingClientRect()) : [];
@@ -52,11 +59,17 @@ export interface MumuBubble {
   text: string;
 }
 
-export function useMumuEngine({ screen, calm, alarm = false, onAlarmPetted }: UseMumuEngineOptions) {
+export function useMumuEngine({ screen, calm, alarm = false, onAlarmPetted, mood = null, speaking = false }: UseMumuEngineOptions) {
+  // The reader corner Mumu sits in; dropping it in the other half of the screen switches and remembers (F8).
+  const cornerRef = useRef<ParkCorner>(loadParkCorner());
   const [snapshot, setSnapshot] = useState<MumuSnapshot>(() => {
-    const { world, field, scale } = readWorld(screen);
+    const { world, field, scale } = readWorld(screen, cornerRef.current);
     return { state: createMumuState(world, Math.random), world, field, scale };
   });
+  const moodRef = useRef(mood);
+  moodRef.current = mood;
+  const speakingRef = useRef(speaking);
+  speakingRef.current = speaking;
   const [bubble, setBubble] = useState<MumuBubble | null>(null);
   const stateRef = useRef(snapshot.state);
   const screenRef = useRef(screen);
@@ -124,10 +137,11 @@ export function useMumuEngine({ screen, calm, alarm = false, onAlarmPetted }: Us
     const tick = (now: number) => {
       const dt = Math.min((now - last) / 1000, MAX_DT_S);
       last = now;
-      const { world, field, parkX, scale } = readWorld(screenRef.current);
+      const { world, field, parkX, scale } = readWorld(screenRef.current, cornerRef.current);
       const actions = actionsRef.current;
       actionsRef.current = [];
       const wasPetted = stateRef.current.petLeft > 0;
+      const wasHeld = stateRef.current.mode === "held";
       stateRef.current = step(
         stateRef.current,
         {
@@ -139,11 +153,21 @@ export function useMumuEngine({ screen, calm, alarm = false, onAlarmPetted }: Us
           parkAt: parkX,
           actions,
           alarm: alarmRef.current,
+          mood: moodRef.current,
+          speaking: speakingRef.current,
         },
         dt,
         Math.random,
       );
       interactedRef.current = false;
+      // Let go in the reader: wherever Mumu was dropped decides its corner, and it walks there.
+      if (wasHeld && stateRef.current.mode !== "held" && parkX !== null) {
+        const corner = cornerForDrop(stateRef.current.x, window.innerWidth);
+        if (corner !== cornerRef.current) {
+          cornerRef.current = corner;
+          saveParkCorner(corner);
+        }
+      }
       sounds.setPurring(stateRef.current.purring);
       for (const effect of stateRef.current.effects) runEffect(effect);
       if (!wasPetted && stateRef.current.petLeft > 0) hideBubble(); // the hearts replace the read-time bubble
@@ -161,14 +185,14 @@ export function useMumuEngine({ screen, calm, alarm = false, onAlarmPetted }: Us
 
   /** Switch animation now (lab buttons). Counts as an interaction. */
   const force = useCallback((anim: AnimName) => {
-    const { world } = readWorld(screenRef.current);
+    const { world } = readWorld(screenRef.current, cornerRef.current);
     stateRef.current = forceAnim(stateRef.current, anim, world, Math.random);
     interactedRef.current = true;
   }, []);
 
   /** The "go climb" idle choice on demand (lab button): walk to the nearer edge and climb it, or turn around if nothing is above. */
   const goClimb = useCallback(() => {
-    const { world, field, parkX } = readWorld(screenRef.current);
+    const { world, field, parkX } = readWorld(screenRef.current, cornerRef.current);
     const input = {
       world,
       field,

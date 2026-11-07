@@ -16,6 +16,7 @@ import {
   EDGE_CATCH_PX,
   EDGE_WALK_CHANCE,
   EMOTE_LIFE_S,
+  FAST_ANIM_RATE,
   GRAVITY_PX_S2,
   HANG_CATCH_PX,
   HANG_MAX_S,
@@ -33,6 +34,8 @@ import {
   JUMP_MAX_S,
   JUMP_MIN_S,
   JUMP_PX_PER_S,
+  MOOD_EMOTE_LIFE_S,
+  MOOD_REACTION_S,
   PET_DURATION_S,
   PET_TAP_WINDOW_S,
   REDUCED_MOTION_CHOICES,
@@ -50,7 +53,9 @@ import {
 } from "./constants.ts";
 import type { MumuAction } from "./gesture.ts";
 import type { Ledge, Playfield, World } from "./layout.ts";
+import { createMoodWatch, MOOD_REACTIONS, stepMoodWatch, type EmoteKind, type MoodWatch } from "./mood.ts";
 import { FRAME_SIZE, type AnimName } from "./sprites.ts";
+import type { Mood } from "@mumu/shared";
 
 export type Rng = () => number;
 
@@ -63,9 +68,10 @@ export type Mode = "ground" | "held" | "falling" | "hanging" | "climbing" | "jum
 
 export interface Emote {
   id: number;
-  kind: "heart";
-  /** Seconds since it spawned. */
+  kind: EmoteKind;
+  /** Seconds since it spawned, and how long it lives. */
   age: number;
+  life: number;
   /** Horizontal offset from Mumu's centre in px. */
   dx: number;
 }
@@ -145,6 +151,12 @@ export interface MumuState {
   emotes: Emote[];
   nextEmoteId: number;
   effects: Effect[];
+
+  /** Scene reactions (C4): the debounce on the bridge mood, and the pose being held for the current mood. */
+  mood: MoodWatch;
+  reaction: { mood: Mood; left: number } | null;
+  /** Was holding the talking (meow) pose for the recap; sits back down when the recap ends. */
+  talking: boolean;
 }
 
 export interface EngineInput {
@@ -161,6 +173,10 @@ export interface EngineInput {
   actions?: readonly MumuAction[];
   /** The long-reading alarm is ringing (from the reading timer). */
   alarm?: boolean;
+  /** The region mood at the read line (bridge `setMood`), null outside the reader. Debounced inside the engine. */
+  mood?: Mood | null;
+  /** The recap is being presented: Mumu holds the meow (talking) pose while it is true. */
+  speaking?: boolean;
 }
 
 function randomBetween(rng: Rng, lo: number, hi: number): number {
@@ -244,6 +260,9 @@ export function createMumuState(world: World, rng: Rng): MumuState {
     emotes: [],
     nextEmoteId: 1,
     effects: [],
+    mood: createMoodWatch(),
+    reaction: null,
+    talking: false,
   };
 }
 
@@ -483,6 +502,7 @@ function applyActions(s: MumuState, input: EngineInput, rng: Rng): MumuState {
               vy: 0,
               dragVx: 0,
               lastTapAt: null,
+              reaction: null,
             },
             "held",
           );
@@ -538,7 +558,7 @@ function stepAlarm(s: MumuState, input: EngineInput, dt: number, rng: Rng): Mumu
     return s.mode === "ground" && s.petLeft <= 0 ? setAnim(ended, "sit") : ended;
   }
   let a = s;
-  if (!a.alarmOn) a = { ...a, alarmOn: true, alarmMeowIn: 0, alarmMeows: 0, petLeft: 0, purring: false, meowLeft: 0, walkTargetX: null };
+  if (!a.alarmOn) a = { ...a, alarmOn: true, alarmMeowIn: 0, alarmMeows: 0, reaction: null, petLeft: 0, purring: false, meowLeft: 0, walkTargetX: null };
   const alarmMeowIn = a.alarmMeowIn - dt;
   if (alarmMeowIn > 0) return { ...a, alarmMeowIn };
   const name = `meow${(a.alarmMeows % 3) + 1}` as MumuSoundName;
@@ -546,7 +566,26 @@ function stepAlarm(s: MumuState, input: EngineInput, dt: number, rng: Rng): Mumu
 }
 
 function stepEmotes(s: MumuState, dt: number): MumuState {
-  return { ...s, emotes: s.emotes.map((e) => ({ ...e, age: e.age + dt })).filter((e) => e.age < EMOTE_LIFE_S) };
+  return { ...s, emotes: s.emotes.map((e) => ({ ...e, age: e.age + dt })).filter((e) => e.age < e.life) };
+}
+
+/** Animation clock speed: battle's pose wags fast. */
+function animRate(s: MumuState): number {
+  const r = s.reaction;
+  return r && s.anim === MOOD_REACTIONS[r.mood].anim && MOOD_REACTIONS[r.mood].fast ? FAST_ANIM_RATE : 1;
+}
+
+/** Scene reactions: feed the bridge mood through the debounce; when it fires, start the pose and float the emote. */
+function stepMood(s: MumuState, input: EngineInput, dt: number): MumuState {
+  const { watch, fire } = stepMoodWatch(s.mood, input.mood ?? null, dt);
+  s = { ...s, mood: watch };
+  if (fire === undefined) return s;
+  if (fire === null) return { ...s, reaction: null };
+  if (s.alarmOn) return s; // the break alarm outranks scene reactions
+  const emote = MOOD_REACTIONS[fire].emote;
+  s = { ...s, reaction: { mood: fire, left: MOOD_REACTION_S } };
+  if (emote === null) return s;
+  return { ...s, emotes: [...s.emotes, { id: s.nextEmoteId, kind: emote, age: 0, life: MOOD_EMOTE_LIFE_S, dx: 0 }], nextEmoteId: s.nextEmoteId + 1 };
 }
 
 /** Hearts while petted; returns whether the petting just ran out. Does not touch the animation. */
@@ -554,7 +593,7 @@ function tickPet(s: MumuState, field: Playfield, dt: number, rng: Rng): { s: Mum
   let p: MumuState = { ...s, petLeft: s.petLeft - dt, heartIn: s.heartIn - dt };
   if (p.heartIn <= 0) {
     const dx = (rng() - 0.5) * field.size * 0.6;
-    p = { ...p, heartIn: p.heartIn + HEART_EVERY_S, emotes: [...p.emotes, { id: p.nextEmoteId, kind: "heart", age: 0, dx }], nextEmoteId: p.nextEmoteId + 1 };
+    p = { ...p, heartIn: p.heartIn + HEART_EVERY_S, emotes: [...p.emotes, { id: p.nextEmoteId, kind: "heart", age: 0, life: EMOTE_LIFE_S, dx }], nextEmoteId: p.nextEmoteId + 1 };
   }
   return p.petLeft <= 0 ? { s: { ...p, petLeft: 0, purring: false }, done: true } : { s: p, done: false };
 }
@@ -612,10 +651,25 @@ function stepGround(state: MumuState, input: EngineInput, dt: number, rng: Rng):
   } else if (s.x !== homeX) {
     s = { ...s, x: homeX }; // closing the last sub-pixel (under ARRIVE_EPS_PX, invisible)
   }
-  if (parked) s = { ...s, facing: -1 }; // the reader corner is on the right: look into the page
+  if (parked) s = { ...s, facing: input.parkAt! > (world.minX + world.maxX) / 2 ? -1 : 1 }; // sit in the corner, looking into the page
 
   if (still && s.walkTargetX !== null) {
     s = setAnim({ ...s, walkTargetX: null }, "sit");
+  }
+
+  // Presenting the recap: Mumu "talks" (meow pose) for as long as the narrator voice plays.
+  if (input.speaking) return setAnim({ ...s, talking: true, walkTargetX: null }, "meow");
+  if (s.talking) s = setAnim({ ...s, talking: false, nextChoiceIn: randomBetween(rng, IDLE_MIN_S, IDLE_MAX_S) }, "sit");
+
+  // A scene reaction holds its pose, then idle life resumes. Reduced motion keeps to sit/loaf (the emote still shows).
+  if (s.reaction) {
+    const left = s.reaction.left - dt;
+    if (left > 0) {
+      const pose = MOOD_REACTIONS[s.reaction.mood].anim;
+      const anim = input.reducedMotion && pose !== "sit" && pose !== "loaf" ? "sit" : pose;
+      return setAnim({ ...s, reaction: { ...s.reaction, left }, walkTargetX: null }, anim);
+    }
+    s = setAnim({ ...s, reaction: null, walkTargetX: null, nextChoiceIn: randomBetween(rng, IDLE_MIN_S, IDLE_MAX_S) }, "sit");
   }
 
   if (s.walkTargetX !== null) {
@@ -722,12 +776,13 @@ export function step(state: MumuState, input: EngineInput, dt: number, rng: Rng)
     ...state,
     effects: [],
     time: state.time + dt,
-    animTime: state.animTime + dt,
+    animTime: state.animTime + dt * animRate(state),
     idleFor: input.interacted || (input.actions?.length ?? 0) > 0 ? 0 : state.idleFor + dt,
   };
   s = stepEmotes(s, dt);
   s = stepAlarm(s, input, dt, rng);
   s = applyActions(s, input, rng);
+  s = stepMood(s, input, dt);
 
   switch (s.mode) {
     case "held": {

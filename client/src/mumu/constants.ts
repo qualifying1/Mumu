@@ -120,3 +120,21 @@ export const LOG_EVERY_S = 15;
 export const SESSION_RESET_OUTSIDE_S = 300;
 /** While the alarm is up, Mumu meows this often, rotating meow1-3. */
 export const ALARM_MEOW_EVERY_S = 2.5;
+
+// ---- C4: reader reactions, recap, reader corner (SPEC F8) ----
+
+/** A mood change reacts at once, then the next reaction waits this long (see stepMoodWatch). */
+export const MOOD_DEBOUNCE_S = 4;
+/** A scene pose is held this long (or until the next mood), then idle life resumes (sit/loaf in the reader). */
+export const MOOD_REACTION_S = 8;
+/** Scene emotes float longer than the petting hearts so they are noticed while reading. */
+export const MOOD_EMOTE_LIFE_S = 2.2;
+/** Battle's "fast tail wag": the animation clock runs this many times faster. */
+export const FAST_ANIM_RATE = 2;
+
+/** The recap bubble stays this long after the narrator audio ends. */
+export const RECAP_LINGER_S = 3;
+/** Without audio (master or voices off) the bubble stays long enough to read: text length / this, clamped. */
+export const RECAP_CHARS_PER_S = 15;
+export const RECAP_SILENT_MIN_S = 6;
+export const RECAP_SILENT_MAX_S = 20;
