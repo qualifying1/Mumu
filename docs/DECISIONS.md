@@ -8,7 +8,7 @@ Claude reads this file. Blanks here become blanks in the build, so fill everythi
 | A: TTS provider | Gemini TTS| Free-tier limits seen in AI Studio: RPM ___ RPD ___ | gemini-3.5-flash-lite
 | B: Vision model | `VISION_MODEL=gemini-3.5-flash-lite` | Speaker accuracy on 3 test slices: _/_ |
 | Reasoning model | `REASONING_MODEL=gemini-3.5-flash-lite` (usually the same as vision) | |
-| TTS model | `TTS_MODEL=gemini-3.5-flash-lite-tts` | Request format: see PROMPTS.md §3 |
+| TTS model | `TTS_MODEL=gemini-3.8-flash-lite-tts` | Request format: see PROMPTS.md §3 |
 | C: Hosting | Render + Vercel / local + video only | |
 | Billing enabled on Gemini? | yes / no | Covers Gate A if the free tier is too small |
 | Demo device | phone model / laptop | Pre-process the chapters **on this device** |
@@ -42,3 +42,4 @@ These seed the 30 premade profiles (`<slot>_1`, `<slot>_2`, `<slot>_3`). Users r
 Add a dated line whenever a decision changes, e.g. "14:10 switched TTS_MODEL to … because …".
 
 - 2026-11-07 M1: filled the voice roster with provisional picks from the Gemini TTS voice list (not yet auditioned in AI Studio). The roster is mirrored in `shared/src/voices.ts`; retune both together.
+- 2026-11-07 A3: switched TTS_MODEL from `gemini-3.5-flash-lite-tts` (the API returns 404, no such model) to `gemini-3.8-flash-lite-tts`, which worked live. Update `TTS_MODEL` in every `server/.env` (main and each worktree; `.env` copies are not shared) and in the Render env.
