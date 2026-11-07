@@ -26,6 +26,8 @@ export interface UseMumuEngineOptions {
   calm?: boolean;
   /** The long-reading alarm is ringing (from useReadingTimer). */
   alarm?: boolean;
+  /** Mumu was petted while the alarm rang: that is the dismissal (the caller snoozes the timer). */
+  onAlarmPetted?: () => void;
 }
 
 function readWorld(screen: WorldScreen): { world: World; field: Playfield; parkX: number | null; scale: number } {
@@ -50,7 +52,7 @@ export interface MumuBubble {
   text: string;
 }
 
-export function useMumuEngine({ screen, calm, alarm = false }: UseMumuEngineOptions) {
+export function useMumuEngine({ screen, calm, alarm = false, onAlarmPetted }: UseMumuEngineOptions) {
   const [snapshot, setSnapshot] = useState<MumuSnapshot>(() => {
     const { world, field, scale } = readWorld(screen);
     return { state: createMumuState(world, Math.random), world, field, scale };
@@ -63,6 +65,8 @@ export function useMumuEngine({ screen, calm, alarm = false }: UseMumuEngineOpti
   calmRef.current = calm;
   const alarmRef = useRef(alarm);
   alarmRef.current = alarm;
+  const alarmPettedRef = useRef(onAlarmPetted);
+  alarmPettedRef.current = onAlarmPetted;
   const interactedRef = useRef(false);
   const actionsRef = useRef<MumuAction[]>([]);
   const soundsRef = useRef<MumuSounds | null>(null);
@@ -97,6 +101,7 @@ export function useMumuEngine({ screen, calm, alarm = false }: UseMumuEngineOpti
     (effect: Effect) => {
       const sounds = soundsRef.current;
       if (effect.type === "sound") sounds?.play(effect.name);
+      else if (effect.type === "alarmPetted") alarmPettedRef.current?.();
       else if (effect.type === "readTime") {
         db.readingLog
           .get(localDateKey(new Date()))
@@ -172,9 +177,9 @@ export function useMumuEngine({ screen, calm, alarm = false }: UseMumuEngineOpti
       interacted: true,
       parkAt: parkX,
     };
-    // Back on the floor first (it may be hanging or falling), then head for the edge.
+    // Ground mode first; if Mumu is off the floor it falls or jumps back on by itself, never snaps.
     const grounded = forceAnim(stateRef.current, "sit", world, Math.random);
-    stateRef.current = startClimbWalk({ ...grounded, y: world.floorY }, input, Math.random);
+    stateRef.current = startClimbWalk(grounded, input, Math.random);
     interactedRef.current = true;
   }, []);
 

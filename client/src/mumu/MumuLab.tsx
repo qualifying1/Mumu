@@ -19,7 +19,7 @@ export default function MumuLab() {
   const [breaks, setBreaks] = useState(0);
 
   const timer = useReadingTimer({ inReader: fakeReader, override: { limitMinutes, snoozeMinutes }, log: false });
-  const engine = useMumuEngine({ screen: fakeReader ? "reader" : "home", calm, alarm: timer.alarm });
+  const engine = useMumuEngine({ screen: fakeReader ? "reader" : "home", calm, alarm: timer.alarm, onAlarmPetted: timer.snooze });
   const { state, scale, force, goClimb } = engine;
 
   // The real app navigates Home on "Take a break" (B's callback); the lab leaves its fake reader instead.
@@ -48,7 +48,7 @@ export default function MumuLab() {
     await db.readingLog.put({ date: localDateKey(new Date()), seconds });
   }
 
-  const alarm = timer.alarm ? { limitMinutes, snoozeMinutes, onBreak: timer.takeBreak, onSnooze: timer.snooze } : null;
+  const alarm = timer.alarm ? { limitMinutes, snoozeMinutes, onBreak: timer.takeBreak } : null;
 
   return (
     <main className="min-h-screen p-4">

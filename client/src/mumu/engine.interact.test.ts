@@ -56,9 +56,15 @@ function run(s: MumuState, seconds: number, extra: Partial<EngineInput> = {}, rn
   return s;
 }
 
-/** Pick Mumu up with the pointer at (x, y) (the pointer is the top centre of the sprite). */
+/** Let a glide (held -> pointer, hang pull-up, climb side-step) finish. */
+function settle(s: MumuState, frames = 60, extra: Partial<EngineInput> = {}): MumuState {
+  for (let i = 0; i < frames; i++) s = act(s, [], extra);
+  return s;
+}
+
+/** Pick Mumu up with the pointer at (x, y) (the pointer is the top centre of the sprite) and let it glide there. */
 function held(x = 300, y = 400): MumuState {
-  return act(createMumuState(world, seq(0)), [{ type: "grab", x, y }]);
+  return settle(act(createMumuState(world, seq(0)), [{ type: "grab", x, y }]), 30);
 }
 
 /** A pointer y that puts the sprite top `gap` px below the ledge's underside. */
@@ -71,16 +77,16 @@ describe("drag", () => {
     expect(s.anim).toBe("held");
     expect(s.x).toBe(300);
     expect(s.y).toBe(400 + field.size);
-    const moved = act(s, [{ type: "move", x: 350, y: 300 }]);
+    const moved = settle(act(s, [{ type: "move", x: 350, y: 300 }]), 30);
     expect(moved.x).toBe(350);
     expect(moved.y).toBe(364);
   });
 
   it("keeps Mumu on screen while dragged", () => {
-    const s = act(held(), [{ type: "move", x: -500, y: -500 }]);
+    const s = settle(act(held(), [{ type: "move", x: -500, y: -500 }]), 30);
     expect(s.x).toBe(field.size / 2);
     expect(s.y).toBe(field.size);
-    const t = act(held(), [{ type: "move", x: 9999, y: 9999 }]);
+    const t = settle(act(held(), [{ type: "move", x: 9999, y: 9999 }]), 30);
     expect(t.x).toBe(field.bounds.right - field.size / 2);
     expect(t.y).toBe(field.bounds.bottom);
   });
@@ -147,17 +153,41 @@ describe("drop", () => {
     expect(s.anim).toBe("sit");
   });
 
-  it("lands at once when released below the floor line", () => {
-    const s = act(act(held(300, 600), [{ type: "release" }]));
+  it("released far below the floor line (dragged under the desk): jumps up onto the floor, never snapped", () => {
+    let s = act(held(300, 600), [{ type: "release" }]);
+    expect(s.y).toBeGreaterThan(world.floorY + 24);
+    s = act(s);
+    expect(s.mode).toBe("jumping");
+    const y0 = s.y;
+    s = act(s);
+    expect(y0 - s.y).toBeLessThan(40);
+    s = run(s, 1.5);
     expect(s.mode).toBe("ground");
     expect(s.y).toBe(world.floorY);
   });
 
-  it("lands inside the walkable range", () => {
-    const noLedges = { field: { ...field, ledges: [] } };
-    const s = run(act(held(20, 400), [{ type: "release" }], noLedges), 2, noLedges);
+  it("released only a little below the floor line: it rides back up smoothly", () => {
+    let s = act(held(300, world.floorY - field.size + 10), [{ type: "release" }]);
+    expect(s.y - world.floorY).toBeCloseTo(10, 5);
+    s = act(s);
     expect(s.mode).toBe("ground");
-    expect(s.x).toBeGreaterThanOrEqual(world.minX);
+    const y0 = s.y;
+    s = act(s);
+    expect(y0 - s.y).toBeLessThan(11);
+    s = run(s, 0.5);
+    expect(s.y).toBe(world.floorY);
+  });
+
+  it("lands where it fell (no clamping jump); if that is off the walkable floor it then walks back on", () => {
+    const noLedges = { field: { ...field, ledges: [] } };
+    let s = act(held(20, 400), [{ type: "release" }], noLedges);
+    const fallX = s.x;
+    while (s.mode === "falling") s = act(s, [], noLedges);
+    expect(s.x).toBe(fallX); // straight down
+    expect(s.x).toBeLessThan(world.minX);
+    s = run(s, 2, noLedges);
+    expect(s.mode).toBe("ground");
+    expect(s.x).toBeGreaterThanOrEqual(world.minX - 1);
   });
 });
 
@@ -166,7 +196,8 @@ describe("hang", () => {
     const s = act(held(300, justUnder(10)), [{ type: "release" }]);
     expect(s.mode).toBe("hanging");
     expect(s.anim).toBe("hang");
-    expect(s.y).toBe(hangFeetY(ledge, field.size));
+    expect(s.hangY).toBe(hangFeetY(ledge, field.size));
+    expect(settle(s, 30).y).toBe(hangFeetY(ledge, field.size)); // pulled up onto the plank, not snapped
     expect(s.hangLeft).toBeGreaterThanOrEqual(HANG_MIN_S);
     expect(s.hangLeft).toBeLessThanOrEqual(HANG_MAX_S);
 
@@ -200,7 +231,8 @@ describe("hang", () => {
     const short: Playfield = { ...field, ledges: [{ left: 100, right: 300, top: 200, bottom: 220 }] };
     const s = act(held(290, justUnder(5)), [{ type: "release" }], { field: short });
     expect(s.mode).toBe("hanging");
-    expect(s.x).toBeLessThanOrEqual(300 - field.size / 2);
+    expect(s.hangX).toBeLessThanOrEqual(300 - field.size / 2);
+    expect(settle(s, 30, { field: short }).x).toBeLessThanOrEqual(300 - field.size / 2);
   });
 
   it("still works with reduced motion (drag is allowed)", () => {
@@ -313,7 +345,9 @@ describe("edge walking and the go-climb idle choice", () => {
     s = run(s, 1);
     expect(s.x).toBe(568);
     const narrower: Playfield = { ...field, bounds: { ...field.bounds, right: 500 } };
-    s = act(s, [], { world: wide, field: narrower });
+    const once = act(s, [], { world: wide, field: narrower });
+    expect(Math.abs(once.x - s.x)).toBeLessThan(5); // slides over, never jumps
+    s = run(s, 1, { world: wide, field: narrower });
     expect(s.x).toBe(500 - field.size / 2);
   });
 
@@ -521,7 +555,7 @@ describe("pet", () => {
   });
 
   it("works in the reader corner too (parked)", () => {
-    const s = act(createMumuState(world, seq(0)), [{ type: "stroke" }], { parkAt: 480 });
+    const s = act({ ...createMumuState(world, seq(0)), x: 480 }, [{ type: "stroke" }], { parkAt: 480 });
     expect(s.purring).toBe(true);
     expect(s.x).toBe(480);
   });

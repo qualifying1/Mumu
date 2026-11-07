@@ -16,12 +16,11 @@ function emoteUrl(name: string): string {
   return `${import.meta.env.BASE_URL}mumu/emotes/${name}.png`;
 }
 
-/** The long-reading alarm bubble (F8): the limit in the text, two buttons. */
+/** The long-reading alarm bubble: the limit in the text, a hint to pet Mumu (that snoozes), and a way to actually take the break. */
 export interface AlarmBubble {
   limitMinutes: number;
   snoozeMinutes: number;
   onBreak: () => void;
-  onSnooze: () => void;
 }
 
 const BUTTON_STYLE: CSSProperties = {
@@ -92,15 +91,14 @@ export default function MumuStage({ engine, alarm = null }: { engine: Engine; al
         return <img key={e.id} src={emoteUrl(e.kind)} alt="" draggable={false} data-mumu-emote={e.kind} style={style} />;
       })}
       {alarm ? (
-        // The one bubble with buttons: it takes pointer events itself, and only it (plus the sprite).
-        <div role="alertdialog" aria-label="Break time" data-mumu-alarm style={{ ...bubbleStyle, pointerEvents: "auto", maxWidth: 300, touchAction: "manipulation" }}>
+        // Mumu is clinging in the middle of the page. The bubble itself ignores pointers (the page stays usable around it);
+        // only its one button takes them. Petting Mumu is how you snooze.
+        <div role="alertdialog" aria-label="Break time" data-mumu-alarm style={{ ...bubbleStyle, maxWidth: 260 }}>
           <div>Mrrow! Break time? ({alarm.limitMinutes} min)</div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 8 }}>
-            <button type="button" data-mumu-break style={BUTTON_STYLE} onClick={alarm.onBreak}>
+          <div style={{ opacity: 0.75, marginTop: 2 }}>Pet me to snooze {alarm.snoozeMinutes} min</div>
+          <div style={{ marginTop: 8 }}>
+            <button type="button" data-mumu-break style={{ ...BUTTON_STYLE, pointerEvents: "auto" }} onClick={alarm.onBreak}>
               Take a break
-            </button>
-            <button type="button" data-mumu-snooze style={BUTTON_STYLE} onClick={alarm.onSnooze}>
-              Snooze {alarm.snoozeMinutes} min
             </button>
           </div>
         </div>

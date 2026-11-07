@@ -86,6 +86,30 @@ export const TAP_MEOW_S = 1.2;
 /** How long the read-time speech bubble stays up. */
 export const BUBBLE_S = 3.5;
 
+// ---- No teleporting: every move is a walk, climb, jump, fall or a glide to the pointer ----
+
+/** Brisk walk to the reader corner, the alarm spot, or back onto the floor. */
+export const HURRY_WALK_SPEED_PX_S = 96;
+/** A floor that moves less than this (page scroll) is followed smoothly; a bigger gap is a fall or a jump. */
+export const RIDE_PX = 24;
+export const RIDE_SPEED_PX_S = 600;
+/** Held Mumu glides to the pointer: closing rate in 1 / s (about 100 ms to catch up). */
+export const HOLD_FOLLOW_PER_S = 30;
+/** Sideways speed to the screen edge while climbing it, and to the plank while being pulled up onto a hang. */
+export const CLIMB_SIDESTEP_PX_S = 120;
+export const HANG_PULL_PX_S = 240;
+/** A jump (used to get up onto a higher floor): flight time and arc height grow with the distance. */
+export const JUMP_MIN_S = 0.45;
+export const JUMP_MAX_S = 1;
+export const JUMP_PX_PER_S = 900;
+export const JUMP_HEIGHT_MIN_PX = 40;
+export const JUMP_HEIGHT_MAX_PX = 160;
+export const JUMP_HEIGHT_FRACTION = 0.25;
+/** The alarm climb up the middle of the reading panel: faster than the shelf climb, at x3 in px/s. */
+export const ALARM_CLIMB_SPEED_AT_X3_PX_S = 100;
+/** Position snapping below this is invisible and stops endless sub-pixel chasing. */
+export const ARRIVE_EPS_PX = 0.25;
+
 // ---- C3: reading timer and long-reading alarm (SPEC F8) ----
 
 /** Reading counts only if there was activity within this window. */

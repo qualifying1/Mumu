@@ -33,10 +33,9 @@ function useMumuScreen(): Screen {
 }
 
 function MumuActor({ screen, timer }: { screen: Screen; timer: ReadingTimer }) {
-  const engine = useMumuEngine({ screen, alarm: timer.alarm });
-  const alarm = timer.alarm
-    ? { limitMinutes: timer.config.limitMinutes, snoozeMinutes: timer.config.snoozeMinutes, onBreak: timer.takeBreak, onSnooze: timer.snooze }
-    : null;
+  // Petting Mumu while it nags is the snooze; "Take a break" in its bubble leaves the reader.
+  const engine = useMumuEngine({ screen, alarm: timer.alarm, onAlarmPetted: timer.snooze });
+  const alarm = timer.alarm ? { limitMinutes: timer.config.limitMinutes, snoozeMinutes: timer.config.snoozeMinutes, onBreak: timer.takeBreak } : null;
   return <MumuStage engine={engine} alarm={alarm} />;
 }
 
