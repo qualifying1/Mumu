@@ -1,0 +1,132 @@
+{
+  "fix": [
+    {
+      "match": {
+        "text": "Hi!",
+        "pageIndex": 1
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "My name is Pepp...",
+        "pageIndex": 1
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "Excuse me!",
+        "pageIndex": 2
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "I'm a real Chaosah Witch.",
+        "pageIndex": 2
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "I even have a diploma that says...",
+        "pageIndex": 2
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "I don't believe this!",
+        "pageIndex": 3
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "I've studied for years, but nobody will take me seriously because...",
+        "pageIndex": 3
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "...I don't look experienced enough!",
+        "pageIndex": 3
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "CARROT!",
+        "pageIndex": 3
+      },
+      "speaker": "chr_pepper",
+      "delivery": "shout"
+    },
+    {
+      "match": {
+        "text": "Really, Carrot?",
+        "pageIndex": 4
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "I hope that meal was worth it.",
+        "pageIndex": 4
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "... You look...",
+        "pageIndex": 4
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "You look hideous...",
+        "pageIndex": 4
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "Of course!",
+        "pageIndex": 4
+      },
+      "speaker": "chr_pepper"
+    },
+    {
+      "match": {
+        "text": "HEY! I heard you were looking for a REAL WITCH?!?",
+        "pageIndex": 5
+      },
+      "speaker": "chr_pepper",
+      "delivery": "shout",
+      "emotion": "determined"
+    }
+  ],
+  "add": [
+    {
+      "pageIndex": 4,
+      "box": {
+        "x0": 0.45,
+        "y0": 0.425,
+        "x1": 0.65,
+        "y1": 0.455
+      },
+      "kind": "speech",
+      "text": "The appearance!",
+      "speaker": "chr_pepper",
+      "emotion": "happy",
+      "after": {
+        "text": "You look hideous...",
+        "pageIndex": 4
+      }
+    }
+  ],
+  "remove": []
+}

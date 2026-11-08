@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import ProcessingPanel from "../components/ProcessingPanel.tsx";
 import { db } from "../db/db.ts";
 import { extractPages } from "../import/extract.ts";
+import { loadDemo } from "../import/demo.ts";
 import { importChapter } from "../import/importChapter.ts";
 import { nextChapterNumber, titleFromFileName } from "../import/pages.ts";
 import { dismissView, startProcessing, useProcessViews } from "../processing/manager.ts";
@@ -23,6 +24,7 @@ export default function Add() {
   const [newTitle, setNewTitle] = useState("");
   const [numberOverride, setNumberOverride] = useState<string | null>(null);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [demoChapter, setDemoChapter] = useState<string | null>(null);
   const views = useProcessViews();
   const processingBusy = [...views.values()].some((v) => isBusy(v));
 
@@ -60,6 +62,18 @@ export default function Add() {
     }
   }
 
+  async function onLoadDemo() {
+    try {
+      setStatus({ kind: "working", message: "Mumu is fetching the demo…" });
+      const first = await loadDemo((message) => setStatus({ kind: "working", message }));
+      setDemoChapter(first);
+      setStatus({ kind: "done", message: "Demo loaded: Pepper&Carrot, chapters 1 and 2." });
+    } catch (e) {
+      console.error("Demo load failed", e);
+      setStatus({ kind: "error", message: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
   /** Start (or retry) processing. startProcessing reports its own failures in the panel; only "busy" throws. */
   async function process(chapterId: string) {
     try {
@@ -80,6 +94,27 @@ export default function Add() {
   return (
     <main className="mx-auto max-w-xl p-6 pb-24">
       <h1 className="text-2xl font-bold">Add a chapter</h1>
+
+      <section className="pixel-frame mt-4 bg-paper p-4 text-ink">
+        <h2 className="font-bold">Try the demo</h2>
+        <p className="mt-1 text-sm">Two voiced Pepper&amp;Carrot chapters with music, sound effects and Mumu. Works offline once loaded.</p>
+        <button
+          type="button"
+          disabled={status.kind === "working" || processingBusy}
+          onClick={onLoadDemo}
+          className="pixel-frame mt-3 min-h-[44px] w-full bg-accent px-4 font-bold text-ink disabled:opacity-40"
+        >
+          {status.kind === "working" ? "Loading…" : "Load the demo chapters"}
+        </button>
+        <p className="mt-2 text-xs opacity-70">
+          Prefer the real thing? Import <a className="underline" href={`${import.meta.env.BASE_URL}demo/pepper-carrot-ch1.cbz`} download>pepper-carrot-ch1.cbz</a> below (needs the server).
+        </p>
+        {demoChapter && (
+          <Link to={`/read/${demoChapter}`} className="pixel-frame mt-3 block min-h-[44px] bg-paper px-4 py-2 text-center font-bold">
+            Read chapter 1 →
+          </Link>
+        )}
+      </section>
 
       <label className="mt-4 block text-sm font-bold" htmlFor="files">
         Chapter file (.cbz, .zip or images)

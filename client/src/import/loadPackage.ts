@@ -55,7 +55,7 @@ export async function loadPackageWithPages(
     await db.series.put({
       id: pkg.seriesId,
       title: existingSeries?.title ?? seriesTitle,
-      coverPageId,
+      coverPageId: existingSeries?.coverPageId ?? coverPageId,
       createdAt: existingSeries?.createdAt ?? Date.now(),
     });
 

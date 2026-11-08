@@ -10,7 +10,12 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       // Workbox skips precache files over this limit (default 2 MiB). Keep music files under it (docs/SPEC.md).
-      workbox: { maximumFileSizeToCacheInBytes: 5 * 1024 * 1024 },
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // App shell, fonts, sprites, music, SFX and Mumu sounds (SPEC F9). Demo pages and packages are fetched once and live in IndexedDB.
+        globPatterns: ["**/*.{js,css,html,svg,png,webp,woff2,mp3}"],
+        navigateFallbackDenylist: [/^\/demo\//],
+      },
       manifest: {
         name: "Mumu",
         short_name: "Mumu",
@@ -18,7 +23,11 @@ export default defineConfig({
         theme_color: "#1a1c2c",
         background_color: "#1a1c2c",
         display: "standalone",
-        icons: [],
+        icons: [
+          { src: "icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "icons/icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "icons/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+        ],
       },
     }),
   ],

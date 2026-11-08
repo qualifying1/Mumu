@@ -22,6 +22,10 @@ Pages are used unmodified (the English version). The bubble boxes, voices and mu
 
 The moods `calm`, `romance`, `comedic` and `mystery` have no track for the demo (see docs/ASSETS.md).
 
+## Generated in this repo (no third-party files)
+
+`scripts/make-assets.mjs` synthesizes, in code: the SFX in `client/public/audio/sfx/` (10 tags), the music for the moods without a licensed track (`calm`, `romance`, `mystery`, `comedic`), the `zzz` and `note` emotes, and the PWA icons in `client/public/icons/` (made from Mumu's own sit sprite). `scripts/build-demo.mjs` builds `client/public/demo/` (the two voiced demo chapters and importable CBZs) from `fixtures/`. The demo voices are Gemini TTS output.
+
 ## Still to add
 
 Audio, fonts, icons and Mumu art are placeholders for now. Record their sources and licenses here when they land.

@@ -93,4 +93,4 @@ Photos of the real cat, used as **drawing reference only**. They are not sprite 
 | `ui_draft.jpg` | not a cat: the UI mood and layout target (see DESIGN.md) |
 
 ## 7. Demo music (`client/public/audio/music/<mood>/1.mp3`)
-Only these moods have a real track for the demo (credits in `CREDITS.md`): `battle`, `tense` and `climax` (one track, copied three times) and `sad`. `calm`, `romance`, `comedic` and `mystery` have **no file**. The audio engine does not substitute another track: when a mood's file fails to load it reports an error (a visible reader error, never swallowed), marks that mood as broken so it does not retry, and music stays silent for that region. It does not crash. Either add the four files or keep demo regions to the four moods above.
+All 8 moods have a track. `battle`, `tense`, `climax` (one licensed track, copied three times) and `sad` are licensed (see `CREDITS.md`); `calm`, `romance`, `mystery` and `comedic` are synthesized by `scripts/make-assets.mjs`. SFX (all 10 tags), the `zzz`/`note` emotes and the PWA icons come from the same script. The engine still never substitutes a track: a missing file is a visible reader error.
