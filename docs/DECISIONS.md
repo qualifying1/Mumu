@@ -8,7 +8,7 @@ Claude reads this file. Blanks here become blanks in the build, so fill everythi
 | A: TTS provider | Gemini TTS| Free-tier limits seen in AI Studio: RPM ___ RPD ___ | gemini-3.5-flash-lite
 | B: Vision model | `VISION_MODEL=gemini-3.5-flash-lite` | Speaker accuracy on 3 test slices: _/_ |
 | Reasoning model | `REASONING_MODEL=gemini-3.5-flash-lite` (usually the same as vision) | |
-| TTS model | `TTS_MODEL=gemini-3.5-flash-lite-tts` | Request format: see PROMPTS.md §3 |
+| TTS model | `TTS_MODEL=gemini-3.8-flash-lite-tts` | Request format: see PROMPTS.md §3 |
 | C: Hosting | Render + Vercel / local + video only | |
 | Billing enabled on Gemini? | yes / no | Covers Gate A if the free tier is too small |
 | Demo device | phone model / laptop | Pre-process the chapters **on this device** |
@@ -17,14 +17,14 @@ Claude reads this file. Blanks here become blanks in the build, so fill everythi
 | Theme hook | **Mumu**, a pixel-art orange cat: the reader's digital sidekick | |
 | Mumu art path | A (pack + edits) / B (AI) · source: | License: |
 | Sprite frame size | 32×32 / other: | Must match `sprites.ts` |
-| Palette | lospec name: | |
-| Fonts | Pixelify Sans + Press Start 2P / other: | |
+| Palette | custom warm palette (no lospec name); day + night tokens live in `client/src/index.css` `@theme` / `.dark` | Wall #e9d3a8, wood #b7783f / #7a4a25, paper #fff3d6, ink #2b1d14, accent #b4431a; night = same room, lamp on |
+| Fonts | Pixelify Sans (UI, variable 400–700) + Press Start 2P (titles only) | Self-hosted woff2 in `client/public/fonts` (from fontsource via jsDelivr; OFL) |
 | Team | solo / names + lanes | |
 
 **Available voice names** (for the Voices tab dropdown): Zephyr, Puck, Charon, Kore, Fenrir, Leda, Orus, Aoede, Callirrhoe, Autonoe, Enceladus, Iapetus, Umbriel, Algieba, Despina, Erinome, Algenib, Rasalgethi, Laomedeia, Achernar, Alnilam, Schedar, Gacrux, Pulcherrima, Achird, Zubenelgenubi, Vindemiatrix, Sadachbia, Sadaltager, Sulafat (Gemini TTS prebuilt voices; the list lives in shared/src/voices.ts)
 
 ## Voice roster = default voice profiles (3 per slot; audition in AI Studio)
-These seed the 30 premade profiles (`<slot>_1`, `<slot>_2`, `<slot>_3`). Users retune them in the Voices tab. **`narrator_1` is the narrator voice** (narration, unknown speakers, the recap), not Mumu's: pick something warm and storyteller-like. A character copies its profile's voice, style, speed and pitch once, when it is created (CONTRACT §3). Each profile has its own voice and pitch (semitones, −6..+6, default 0); style and speed are shared by the three profiles of a slot. Profiles 2 and 3 can start as the same voice as profile 1 with a different pitch.
+These seed the 30 premade profiles (`<slot>_1`, `<slot>_2`, `<slot>_3`). Users retune them in the Voices tab. **`narrator_1` is the narrator voice** (narration captions and unknown speakers), not Mumu's: pick something warm and storyteller-like. A character copies its profile's voice, style, speed and pitch once, when it is created (CONTRACT §3). Each profile has its own voice and pitch (semitones, −6..+6, default 0); style and speed are shared by the three profiles of a slot. Profiles 2 and 3 can start as the same voice as profile 1 with a different pitch.
 | VoiceSlot | Voice 1 | Pitch 1 | Voice 2 | Pitch 2 | Voice 3 | Pitch 3 | Default style | Speed |
 |---|---|---|---|---|---|---|---|---|
 | narrator | Achird | 0 | Sulafat | 0 | Sadaltager | 0 | calm, cinematic | 1.0 |
@@ -42,3 +42,4 @@ These seed the 30 premade profiles (`<slot>_1`, `<slot>_2`, `<slot>_3`). Users r
 Add a dated line whenever a decision changes, e.g. "14:10 switched TTS_MODEL to … because …".
 
 - 2026-11-07 M1: filled the voice roster with provisional picks from the Gemini TTS voice list (not yet auditioned in AI Studio). The roster is mirrored in `shared/src/voices.ts`; retune both together.
+- 2026-11-07 A3: switched TTS_MODEL from `gemini-3.5-flash-lite-tts` (the API returns 404, no such model) to `gemini-3.8-flash-lite-tts`, which worked live. Update `TTS_MODEL` in every `server/.env` (main and each worktree; `.env` copies are not shared) and in the Render env.

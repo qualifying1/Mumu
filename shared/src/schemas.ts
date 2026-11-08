@@ -101,6 +101,7 @@ export const ModelsSchema = z.object({
 });
 export type Models = z.infer<typeof ModelsSchema>;
 
+/** DEPRECATED (no recap feature): packages no longer carry one. Kept only so older packages still parse. */
 export const RecapSchema = z.object({
   text: z.string().min(1),
   audioId: z.string().min(1),
@@ -116,7 +117,8 @@ export const ChapterPackageSchema = z
     newCharacters: z.array(CharacterSchema),
     cues: z.array(CueSchema),
     regions: z.array(RegionSchema),
-    recap: RecapSchema,
+    /** Deprecated and ignored: there is no recap. Nothing produces or plays it. */
+    recap: RecapSchema.optional(),
     audio: z.array(AudioClipSchema),
   })
   .superRefine((pkg, ctx) => {
@@ -132,7 +134,7 @@ export const ChapterPackageSchema = z
         ctx.addIssue({ code: "custom", path: ["cues", i, "order"], message: "cues must be sorted by increasing order" });
       }
     });
-    if (!audioIds.has(pkg.recap.audioId)) {
+    if (pkg.recap && !audioIds.has(pkg.recap.audioId)) {
       ctx.addIssue({ code: "custom", path: ["recap", "audioId"], message: `no audio clip ${pkg.recap.audioId}` });
     }
   });

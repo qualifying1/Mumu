@@ -20,7 +20,7 @@ describe("fixtures/sample.json", () => {
     const pkg = ChapterPackageSchema.parse(raw);
     expect(pkg.cues.length).toBeGreaterThanOrEqual(6);
     expect(pkg.regions).toHaveLength(2);
-    expect(pkg.recap.text.length).toBeGreaterThan(0);
+    expect(pkg.recap).toBeUndefined();
   });
 
   it("ships real MP3 data for every voiced cue", () => {

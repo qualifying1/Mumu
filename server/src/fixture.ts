@@ -1,18 +1,19 @@
-// Fixture CLI: run the pipeline on a folder of page images and write the package (no audio yet).
+// Fixture CLI: run the whole pipeline on a folder of page images and write the voiced package.
 //   npm run fixture -- fixtures/ch1
 //   npm run fixture -- fixtures/ch2 --cast fixtures/out/ch1.json     (--cast is repeatable)
-// Writes fixtures/out/<name>.raw.json (per-segment vision results) and fixtures/out/<name>.json
-// (the draft package), then prints the transcript (`order. [speaker] text`) and the recap.
+// Writes fixtures/out/<name>.raw.json (per-segment vision results), fixtures/out/<name>.json (the
+// ChapterPackage, audio included) and fixtures/out/<name>-audio/*.mp3 (one file per clip, to play),
+// then prints the transcript (`order. [speaker] text`) and the recap.
 import { DEFAULT_PROFILES, type Character } from "@mumu/shared";
 import dotenv from "dotenv";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DiskCache } from "./pipeline/cache.js";
 import { loadCastFromPackages } from "./pipeline/cast.js";
-import { buildChapterDraft } from "./pipeline/chapter.js";
+import { buildChapter } from "./pipeline/chapter.js";
 import type { DraftPackage } from "./pipeline/draft.js";
-import { createGeminiReasonGenerate, createGeminiVisionGenerate } from "./pipeline/gemini.js";
+import { createGeminiReasonGenerate, createGeminiTtsGenerate, createGeminiVisionGenerate } from "./pipeline/gemini.js";
 import type { MergedLine } from "./pipeline/merge.js";
 import { parsePipelineEnv } from "./pipeline/config.js";
 import { REASON_PROMPT_VERSION } from "./pipeline/reasonSchema.js";
@@ -83,26 +84,36 @@ async function main() {
   const pages = [];
   for (const file of files) pages.push({ bytes: await normalizePage(await readFile(path.join(folder, file))) });
 
-  const { draft, lines, raw, segmentCount } = await buildChapterDraft(
+  const { pkg, draft, lines, raw, segmentCount } = await buildChapter(
     { seriesId, chapterId: name, pages, cast, profiles: DEFAULT_PROFILES },
     {
       models: { vision: env.VISION_MODEL, reasoning: env.REASONING_MODEL, tts: env.TTS_MODEL },
       cache: new DiskCache(env.CACHE_DIR),
       visionGenerate: createGeminiVisionGenerate(env.GEMINI_API_KEY),
       reasonGenerate: createGeminiReasonGenerate(env.GEMINI_API_KEY),
+      ttsGenerate: createGeminiTtsGenerate(env.GEMINI_API_KEY),
       visionConcurrency: env.VISION_CONCURRENCY,
+      ttsConcurrency: env.TTS_CONCURRENCY,
       onProgress: (p) => {
-        if (p.state !== "analyzing") console.log(p.message);
+        if (p.state !== "analyzing" && p.state !== "voicing") console.log(p.message);
       },
     },
   );
 
   const outDir = path.join(repoRoot, "fixtures", "out");
-  await mkdir(outDir, { recursive: true });
+  const audioDir = path.join(outDir, `${name}-audio`);
+  await rm(audioDir, { recursive: true, force: true });
+  await mkdir(audioDir, { recursive: true });
   const rawFile = path.join(outDir, `${name}.raw.json`);
   const pkgFile = path.join(outDir, `${name}.json`);
   await writeFile(rawFile, JSON.stringify({ promptVersion: VISION_PROMPT_VERSION, model: env.VISION_MODEL, pages: files, segments: raw }, null, 2));
-  await writeFile(pkgFile, JSON.stringify(draft, null, 2));
+  await writeFile(pkgFile, JSON.stringify(pkg, null, 2));
+  const cueByAudio = new Map(pkg.cues.filter((c) => c.audioId !== null).map((c) => [c.audioId!, c]));
+  for (const clip of pkg.audio) {
+    const cue = cueByAudio.get(clip.id);
+    const file = cue ? `${String(cue.order).padStart(3, "0")}-${cue.kind}.mp3` : "recap.mp3";
+    await writeFile(path.join(audioDir, file), Buffer.from(clip.dataBase64, "base64"));
+  }
 
   console.log(`\nTranscript (${draft.cues.length} cues, ${segmentCount} segments):`);
   for (const line of transcriptLines(lines, draft, cast)) console.log(line);
@@ -113,7 +124,10 @@ async function main() {
     console.log(`p${r.start.pageIndex}@${r.start.y.toFixed(2)} -> p${r.end.pageIndex}@${r.end.y.toFixed(2)} ${r.mood} ${r.intensity}`);
   }
   console.log(`\nRecap: ${draft.recap.text}`);
-  console.log(`\nwrote ${path.relative(repoRoot, rawFile)} and ${path.relative(repoRoot, pkgFile)} (draft package validates against DraftPackageSchema)`);
+  const voiced = pkg.cues.filter((c) => c.audioId !== null).length;
+  const totalMs = pkg.audio.reduce((sum, a) => sum + a.durationMs, 0);
+  console.log(`\nAudio: ${pkg.audio.length} clips = ${voiced} voiced cues + 1 recap, ${(totalMs / 1000).toFixed(1)} s in total`);
+  console.log(`wrote ${path.relative(repoRoot, rawFile)}, ${path.relative(repoRoot, pkgFile)} and ${path.relative(repoRoot, audioDir)}${path.sep} (the package validates against ChapterPackageSchema)`);
 }
 
 main().catch((err) => {

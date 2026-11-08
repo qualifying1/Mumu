@@ -103,9 +103,6 @@ const cues = cueSpecs.map((spec, i) => {
   };
 });
 
-const recapClip = beep(392, 900);
-audio.push({ id: "aud_recap", mime: "audio/mpeg", ...recapClip });
-
 const pkg = {
   contractVersion: 1,
   seriesId: SERIES,
@@ -118,10 +115,6 @@ const pkg = {
     { id: "reg_1", start: { pageIndex: 0, y: 0 }, end: { pageIndex: 0, y: 0.42 }, mood: "tense", intensity: 2 },
     { id: "reg_2", start: { pageIndex: 0, y: 0.42 }, end: { pageIndex: 2, y: 0.7 }, mood: "battle", intensity: 3 },
   ],
-  recap: {
-    text: "Mumu remembers: Pepper and Carrot are dueling a furious rival witch above the moonlit hill of Tenebrume. Pepper survived a blast with a shield spell, and Carrot has just started Plan 7-B.",
-    audioId: "aud_recap",
-  },
   audio,
 };
 
