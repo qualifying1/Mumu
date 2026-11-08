@@ -46,7 +46,6 @@ const GOOD: ReasoningResult = {
     { startOrder: 1, endOrder: 2, mood: "calm", intensity: 1 },
     { startOrder: 3, endOrder: 4, mood: "battle", intensity: 3 },
   ],
-  recap: "A guard challenges a stranger and something explodes.",
 };
 
 const existing = (id: string, profileId: string): Character => ({
@@ -148,9 +147,10 @@ describe("reasonChapter", () => {
     expect(generate).toHaveBeenCalledTimes(1);
   });
 
-  it("never mentions Mumu: narration and the recap come from a background storyteller", () => {
+  it("never mentions Mumu, and asks for no recap (CONTRACT §5: there is none)", () => {
     const prompt = buildReasonPrompt(LINES, []);
     expect(prompt).not.toMatch(/mumu|cat/i);
+    expect(prompt).not.toMatch(/recap/i);
     expect(prompt).toContain("The narrator is not a character");
   });
 
@@ -293,7 +293,6 @@ describe("buildChapterDraft", () => {
       speakers: [{ order: 1, speaker: "new_1" }],
       newCharacters: [{ key: "new_1", name: "Guard", description: "armored man", voiceSlot: "male_deep" }],
       regions: [{ startOrder: 1, endOrder: 2, mood: "tense", intensity: 2 }],
-      recap: "A guard shouts and things go boom.",
     };
     const reasonGenerate = vi.fn<ReasonGenerate>(async () => JSON.stringify(reasoning));
     const states: string[] = [];
@@ -323,7 +322,7 @@ describe("buildChapterDraft", () => {
       { id: "chr_guard", seriesId: "s1", name: "Guard", description: "armored man", voiceSlot: "male_deep", profileId: "male_deep_1", voice: snapshotVoice(DEFAULT_PROFILES.find((p) => p.id === "male_deep_1")!), firstSeenChapterId: "ch1" },
     ]);
     expect(draft.regions).toHaveLength(1);
-    expect(draft.recap.text).toMatch(/guard/);
+    expect(draft).not.toHaveProperty("recap");
     expect(states).toEqual(["slicing", "slicing", "analyzing", "reasoning", "reasoning", "casting"]);
   });
 
@@ -348,7 +347,6 @@ describe("buildChapterDraft", () => {
       speakers: [{ order: 1, speaker: "new_1" }, { order: 3, speaker: null }],
       newCharacters: [{ key: "new_1", name: "Guard", description: "armored man", voiceSlot: "male_deep" }],
       regions: [{ startOrder: 1, endOrder: 3, mood: "tense", intensity: 2 }],
-      recap: "Pepper shouts and things go boom.",
     };
     const reasonGenerate = vi.fn<ReasonGenerate>(async () => JSON.stringify(reasoning));
     const logs: string[] = [];

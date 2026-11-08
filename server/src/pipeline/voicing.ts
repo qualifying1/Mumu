@@ -6,33 +6,30 @@ import { cacheKey, type DiskCache } from "./cache.js";
 import type { DraftPackage } from "./draft.js";
 import type { TtsGenerate } from "./gemini.js";
 import { withBackoff, type Sleep } from "./retry.js";
-import { hasSpeakableText, resolveCueVoice, resolveRecapVoice, type VoiceSpec } from "./tts.js";
+import { hasSpeakableText, resolveCueVoice, type VoiceSpec } from "./tts.js";
 
 const NAMESPACE = "tts";
 
-/** One clip to voice: a cue's line, or the chapter recap. */
+/** One clip to voice: a cue's line. */
 export interface ClipPlan {
   audioId: string;
-  /** The cue it belongs to; null for the recap. */
-  cueId: string | null;
+  cueId: string;
   text: string;
   spec: VoiceSpec;
 }
 
-export const recapAudioId = (chapterId: string) => `aud_${chapterId}_recap`;
 export const cueAudioId = (chapterId: string, order: number) => `aud_${chapterId}_${order}`;
 
 /**
- * Which clips a chapter needs: every speech/thought/narration cue with something to say, plus
- * the recap (CONTRACT §5: clips = voiced cues + 1). SFX and cues without letters or digits stay silent.
+ * Which clips a chapter needs: one per speech/thought/narration cue with something to say
+ * (CONTRACT §5: clips = voiced cues). SFX and cues without letters or digits stay silent.
  */
-export function planClips(draft: Pick<DraftPackage, "chapterId" | "cues" | "recap">, characters: readonly Character[], profiles: readonly VoiceProfile[]): ClipPlan[] {
+export function planClips(draft: Pick<DraftPackage, "chapterId" | "cues">, characters: readonly Character[], profiles: readonly VoiceProfile[]): ClipPlan[] {
   const plans: ClipPlan[] = [];
   for (const cue of draft.cues) {
     if (cue.kind === "sfx" || !hasSpeakableText(cue.text)) continue;
     plans.push({ audioId: cueAudioId(draft.chapterId, cue.order), cueId: cue.id, text: cue.text, spec: resolveCueVoice(cue, characters, profiles) });
   }
-  plans.push({ audioId: recapAudioId(draft.chapterId), cueId: null, text: draft.recap.text, spec: resolveRecapVoice(profiles) });
   return plans;
 }
 
@@ -138,7 +135,7 @@ export async function voiceChapter(
   if (failure !== undefined) throw failure;
   const clips = settled.map((s) => (s as PromiseFulfilledResult<AudioClip>).value);
 
-  const audioIdByCue = new Map(plans.filter((p) => p.cueId !== null).map((p) => [p.cueId!, p.audioId]));
+  const audioIdByCue = new Map(plans.map((p) => [p.cueId, p.audioId]));
   const cues: Cue[] = draft.cues.map((cue) => ({ ...cue, audioId: audioIdByCue.get(cue.id) ?? null }));
 
   return ChapterPackageSchema.parse({
@@ -149,7 +146,6 @@ export async function voiceChapter(
     newCharacters: draft.newCharacters,
     cues,
     regions: draft.regions,
-    recap: { text: draft.recap.text, audioId: recapAudioId(draft.chapterId) },
     audio: clips,
   });
 }

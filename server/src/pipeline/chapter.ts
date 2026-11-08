@@ -121,7 +121,7 @@ export interface ChapterBuildDeps extends ChapterDeps {
 }
 
 export interface ChapterBuildResult extends ChapterDraftResult {
-  /** The finished package: the draft plus MP3 clips for every voiced cue and the recap. */
+  /** The finished package: the draft plus MP3 clips for every voiced cue. */
   pkg: ChapterPackage;
 }
 

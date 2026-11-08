@@ -8,7 +8,7 @@ import { TTS_SAMPLE_RATE, pcmToWav } from "./audio.js";
 import { DiskCache } from "./cache.js";
 import { DraftPackageSchema, type DraftPackage } from "./draft.js";
 import type { TtsGenerate } from "./gemini.js";
-import { planClips, recapAudioId, ttsWav, voiceChapter } from "./voicing.js";
+import { planClips, ttsWav, voiceChapter } from "./voicing.js";
 
 const wavOf = (seconds: number) => pcmToWav(Buffer.alloc(Math.round(seconds * TTS_SAMPLE_RATE) * 2, 1));
 
@@ -66,7 +66,6 @@ const draft = (): DraftPackage =>
       cue(7, { kind: "thought", characterId: "chr_new", text: "Oh no." }),
     ],
     regions: [{ id: "reg_c1_1", start: { pageIndex: 0, y: 0.1 }, end: { pageIndex: 0, y: 0.4 }, mood: "calm", intensity: 1 }],
-    recap: { text: "A guard challenges a witch." },
   });
 
 let dir: string;
@@ -80,14 +79,13 @@ afterEach(async () => {
 const quiet = () => {};
 
 describe("planClips", () => {
-  it("voices speech, thought and narration with letters/digits, never sfx or punctuation-only text, plus the recap", () => {
+  it("voices speech, thought and narration with letters/digits, never sfx or punctuation-only text, and no recap", () => {
     const plans = planClips(draft(), [existing, fresh], DEFAULT_PROFILES);
-    expect(plans.map((p) => p.cueId)).toEqual(["cue_c1_1", "cue_c1_2", "cue_c1_4", "cue_c1_5", "cue_c1_7", null]);
-    expect(plans.at(-1)!.audioId).toBe(recapAudioId("c1"));
+    expect(plans.map((p) => p.cueId)).toEqual(["cue_c1_1", "cue_c1_2", "cue_c1_4", "cue_c1_5", "cue_c1_7"]);
     expect(new Set(plans.map((p) => p.audioId)).size).toBe(plans.length);
   });
 
-  it("uses character snapshots, the narrator profile for narration/unknown, and the recap style", () => {
+  it("uses character snapshots, the narrator profile for narration/unknown", () => {
     const narrator = DEFAULT_PROFILES.find((p) => p.id === "narrator_1")!;
     const byCue = new Map(planClips(draft(), [existing, fresh], DEFAULT_PROFILES).map((p) => [p.cueId, p.spec]));
     expect(byCue.get("cue_c1_2")).toEqual({ voice: "Umbriel", speed: 0.9, pitch: -2, style: "snapshot style, angry, intense, shouting loudly" });
@@ -95,7 +93,6 @@ describe("planClips", () => {
     expect(byCue.get("cue_c1_7")).toMatchObject({ voice: "Leda", style: "bright, lively, inner monologue, intimate, natural" });
     expect(byCue.get("cue_c1_1")).toMatchObject({ voice: narrator.voice, style: `${narrator.style} narration` });
     expect(byCue.get("cue_c1_5")).toMatchObject({ voice: narrator.voice, style: `${narrator.style} narration` });
-    expect(byCue.get(null)).toMatchObject({ voice: narrator.voice, style: "playful, warm storyteller" });
   });
 
   it("an unknown character id fails loudly", () => {
@@ -107,15 +104,15 @@ describe("voiceChapter", () => {
   const run = (generate: TtsGenerate, over: { cast?: Character[]; log?: (l: string) => void } = {}) =>
     voiceChapter(draft(), { cast: over.cast ?? [existing], profiles: DEFAULT_PROFILES }, { model: "tts-test", cache: new DiskCache(dir), generate, concurrency: 3, log: over.log ?? quiet });
 
-  it("builds a valid package: clips = voiced cues + 1, cues linked, recap linked", async () => {
+  it("builds a valid package: clips = voiced cues, cues linked, no recap", async () => {
     const generate = vi.fn<TtsGenerate>(async () => wavOf(0.5));
     const pkg = await run(generate);
     expect(ChapterPackageSchema.safeParse(pkg).success).toBe(true);
-    expect(pkg.audio).toHaveLength(6); // 5 voiced cues + recap
+    expect(pkg.audio).toHaveLength(5); // one clip per voiced cue
     expect(pkg.cues.filter((c) => c.audioId !== null)).toHaveLength(5);
     expect(pkg.cues.find((c) => c.kind === "sfx")!.audioId).toBeNull();
     expect(pkg.cues.find((c) => c.text === "...")!.audioId).toBeNull();
-    expect(pkg.recap?.audioId).toBe(recapAudioId("c1")); // lane A: delete with the recap (CONTRACT §5)
+    expect(pkg).not.toHaveProperty("recap");
     for (const clip of pkg.audio) {
       expect(clip.mime).toBe("audio/mpeg");
       expect(clip.durationMs).toBeGreaterThan(0);
@@ -131,13 +128,13 @@ describe("voiceChapter", () => {
     const generate = vi.fn<TtsGenerate>(async () => wavOf(0.2));
     await run(generate);
     expect(generate).toHaveBeenCalledWith({ model: "tts-test", voice: "Umbriel", style: "snapshot style, angry, intense, shouting loudly", text: "Who goes there?" });
-    expect(generate).toHaveBeenCalledTimes(6);
+    expect(generate).toHaveBeenCalledTimes(5);
   });
 
   it("second run makes 0 TTS calls and logs only cache hits", async () => {
     const generate = vi.fn<TtsGenerate>(async () => wavOf(0.3));
     await run(generate);
-    expect(generate).toHaveBeenCalledTimes(6);
+    expect(generate).toHaveBeenCalledTimes(5);
 
     const second = vi.fn<TtsGenerate>(async () => {
       throw new Error("must not be called");
@@ -145,9 +142,9 @@ describe("voiceChapter", () => {
     const logs: string[] = [];
     const pkg = await run(second, { log: (l) => logs.push(l) });
     expect(second).not.toHaveBeenCalled();
-    expect(logs).toHaveLength(6);
+    expect(logs).toHaveLength(5);
     expect(logs.every((l) => l.startsWith("cache hit"))).toBe(true);
-    expect(pkg.audio).toHaveLength(6);
+    expect(pkg.audio).toHaveLength(5);
   });
 
   it("changing only speed or pitch re-encodes the cached WAV with no new TTS calls", async () => {
@@ -170,8 +167,8 @@ describe("voiceChapter", () => {
     const twin = DraftPackageSchema.parse({ ...d, cues: [cue(1, { kind: "narration", text: "Same." }), cue(2, { kind: "narration", text: "Same." })] });
     const generate = vi.fn<TtsGenerate>(async () => wavOf(0.2));
     const pkg = await voiceChapter(twin, { cast: [], profiles: DEFAULT_PROFILES }, { model: "m", cache: new DiskCache(dir), generate, concurrency: 3, log: quiet });
-    expect(generate).toHaveBeenCalledTimes(2); // "Same." once + the recap
-    expect(pkg.audio).toHaveLength(3); // still one clip per voiced cue + recap
+    expect(generate).toHaveBeenCalledTimes(1); // "Same." once
+    expect(pkg.audio).toHaveLength(2); // still one clip per voiced cue
   });
 
   it("a failing clip fails the whole chapter, naming the line", async () => {

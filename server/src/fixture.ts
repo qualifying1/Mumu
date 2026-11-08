@@ -5,7 +5,7 @@
 // Pages are read at full resolution (the HTTP API gets the client's downscaled pages; the fixture does not).
 // Writes fixtures/out/<name>.raw.json (per-segment vision results), fixtures/out/<name>.json (the
 // ChapterPackage, audio included) and fixtures/out/<name>-audio/*.mp3 (one file per clip, to play),
-// then prints the transcript (`order. [speaker] text`) and the recap.
+// then prints the transcript (`order. [speaker] text`).
 // MOCK_TTS=1 replaces only the TTS call with beeps and writes <name>.mock.json / <name>.mock-audio/
 // instead, so a mock run can never overwrite a real package.
 import { DEFAULT_PROFILES, type Character } from "@mumu/shared";
@@ -130,8 +130,8 @@ async function main() {
   const cueByAudio = new Map(pkg.cues.filter((c) => c.audioId !== null).map((c) => [c.audioId!, c]));
   for (const clip of pkg.audio) {
     const cue = cueByAudio.get(clip.id);
-    const file = cue ? `${String(cue.order).padStart(3, "0")}-${cue.kind}.mp3` : "recap.mp3";
-    await writeFile(path.join(audioDir, file), Buffer.from(clip.dataBase64, "base64"));
+    if (!cue) throw new Error(`audio clip ${clip.id} belongs to no cue`);
+    await writeFile(path.join(audioDir, `${String(cue.order).padStart(3, "0")}-${cue.kind}.mp3`), Buffer.from(clip.dataBase64, "base64"));
   }
 
   console.log(`\nTranscript (${draft.cues.length} cues, ${segmentCount} segments):`);
@@ -142,10 +142,9 @@ async function main() {
   for (const r of draft.regions) {
     console.log(`p${r.start.pageIndex}@${r.start.y.toFixed(2)} -> p${r.end.pageIndex}@${r.end.y.toFixed(2)} ${r.mood} ${r.intensity}`);
   }
-  console.log(`\nRecap: ${draft.recap.text}`);
   const voiced = pkg.cues.filter((c) => c.audioId !== null).length;
   const totalMs = pkg.audio.reduce((sum, a) => sum + a.durationMs, 0);
-  console.log(`\nAudio: ${pkg.audio.length} clips = ${voiced} voiced cues + 1 recap, ${(totalMs / 1000).toFixed(1)} s in total`);
+  console.log(`\nAudio: ${pkg.audio.length} clips = ${voiced} voiced cues, ${(totalMs / 1000).toFixed(1)} s in total`);
   console.log(`wrote ${path.relative(repoRoot, rawFile)}, ${path.relative(repoRoot, pkgFile)} and ${path.relative(repoRoot, audioDir)}${path.sep} (the package validates against ChapterPackageSchema)`);
 }
 

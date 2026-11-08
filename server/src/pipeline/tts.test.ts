@@ -1,6 +1,6 @@
 import { DEFAULT_PROFILES, type Character, type Cue } from "@mumu/shared";
 import { describe, expect, it } from "vitest";
-import { characterStyle, hasSpeakableText, narrationStyle, recapStyle, resolveCueVoice, resolveRecapVoice } from "./tts.js";
+import { characterStyle, hasSpeakableText, narrationStyle, resolveCueVoice } from "./tts.js";
 
 type CueLike = Pick<Cue, "id" | "kind" | "characterId" | "emotion" | "delivery">;
 const cue = (over: Partial<CueLike> = {}): CueLike => ({ id: "cue_1", kind: "speech", characterId: null, emotion: "neutral", delivery: "normal", ...over });
@@ -31,10 +31,6 @@ describe("style string (PROMPTS §3)", () => {
   it("narration is the narrator style as narration (default: calm, cinematic narration)", () => {
     expect(narrationStyle({ style: "calm, cinematic" }, { delivery: "normal" })).toBe("calm, cinematic narration");
     expect(narrationStyle({ style: "calm, cinematic" }, { delivery: "shout" })).toBe("calm, cinematic narration, shouting loudly");
-  });
-
-  it("the recap style is the storyteller phrase", () => {
-    expect(recapStyle()).toBe("playful, warm storyteller");
   });
 });
 
@@ -70,11 +66,6 @@ describe("resolveCueVoice (CONTRACT §3)", () => {
     });
     // unknown speaker (speech, no characterId) -> narrator, using the profiles the client sent
     expect(resolveCueVoice(cue({ characterId: null }), [hero], custom)).toMatchObject({ voice: "Kore", speed: 0.9, pitch: -1 });
-  });
-
-  it("the recap uses narrator_1 with the storyteller style", () => {
-    const narrator = DEFAULT_PROFILES.find((p) => p.id === "narrator_1")!;
-    expect(resolveRecapVoice(DEFAULT_PROFILES)).toEqual({ voice: narrator.voice, speed: narrator.speed, pitch: narrator.pitch, style: "playful, warm storyteller" });
   });
 
   it("fails loudly on an unknown character, a missing narrator profile, and sfx", () => {

@@ -20,7 +20,6 @@ export const DELIVERY_PHRASE: Record<Delivery, string> = {
 };
 
 const THOUGHT_PHRASE = "inner monologue, intimate";
-const RECAP_STYLE = "playful, warm storyteller";
 
 const join = (parts: readonly string[]) => parts.map((p) => p.trim()).filter(Boolean).join(", ");
 
@@ -32,11 +31,6 @@ export function characterStyle(voice: Pick<CharacterVoice, "style">, cue: Pick<C
 /** Narration and unknown speakers: the narrator profile's style as narration, plus a shout/whisper if the lettering asks for one. */
 export function narrationStyle(narrator: Pick<CharacterVoice, "style">, cue: Pick<Cue, "delivery">): string {
   return join([`${narrator.style.trim()} narration`, DELIVERY_PHRASE[cue.delivery]]);
-}
-
-/** The recap is always told in the narrator voice with this style (PROMPTS §3). */
-export function recapStyle(): string {
-  return RECAP_STYLE;
 }
 
 /** Text a TTS model can say: at least one letter or digit (CONTRACT §5: otherwise `audioId` is null). */
@@ -60,7 +54,7 @@ export function narratorVoice(profiles: readonly VoiceProfile[]): VoiceProfile {
 
 /**
  * CONTRACT §3 voice resolution. A speech/thought line with a character uses that character's
- * `voice` snapshot (never the live profile table); narration, unknown speakers and the recap use
+ * `voice` snapshot (never the live profile table); narration captions and unknown speakers use
  * the narrator profile. A characterId that is in neither list is a bug upstream: fail loudly.
  */
 export function resolveCueVoice(cue: Pick<Cue, "id" | "kind" | "characterId" | "emotion" | "delivery">, characters: readonly Character[], profiles: readonly VoiceProfile[]): VoiceSpec {
@@ -73,9 +67,4 @@ export function resolveCueVoice(cue: Pick<Cue, "id" | "kind" | "characterId" | "
   }
   const n = narratorVoice(profiles);
   return { voice: n.voice, speed: n.speed, pitch: n.pitch, style: narrationStyle(n, cue) };
-}
-
-export function resolveRecapVoice(profiles: readonly VoiceProfile[]): VoiceSpec {
-  const n = narratorVoice(profiles);
-  return { voice: n.voice, speed: n.speed, pitch: n.pitch, style: recapStyle() };
 }

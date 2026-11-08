@@ -14,8 +14,8 @@ import type { MergedLine } from "./merge.js";
 import type { ReasoningResult } from "./reasonSchema.js";
 
 /**
- * A ChapterPackage before voicing (A2): same shape minus audio. Cues have `audioId: null` and
- * the recap has text only; A3 fills the audio and produces the full ChapterPackage.
+ * A ChapterPackage before voicing (A2): same shape minus audio. Cues have `audioId: null`;
+ * A3 fills the audio and produces the full ChapterPackage. There is no recap (CONTRACT §5).
  */
 export const DraftPackageSchema = z
   .object({
@@ -26,7 +26,6 @@ export const DraftPackageSchema = z
     newCharacters: z.array(CharacterSchema),
     cues: z.array(CueSchema),
     regions: z.array(RegionSchema),
-    recap: z.object({ text: z.string().min(1) }),
   })
   .superRefine((pkg, ctx) => {
     pkg.cues.forEach((cue, i) => {
@@ -113,6 +112,5 @@ export function assembleDraft(args: {
     newCharacters: args.newCharacters,
     cues,
     regions: regionsFromOrders(args.reasoning.regions, cues, args.chapterId),
-    recap: { text: args.reasoning.recap },
   });
 }

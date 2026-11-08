@@ -199,7 +199,6 @@ describe("applySpeakerOverrides", () => {
       { key: "new_2", name: "B", description: "b", voiceSlot: "male_adult" },
     ],
     regions: [{ startOrder: 1, endOrder: 5, mood: "calm", intensity: 1 }],
-    recap: "Things happen.",
   };
   it("replaces the model's speaker and leaves the rest", () => {
     const out = applySpeakerOverrides(reasoning, new Map([[4, "chr_carrot"]]));
@@ -250,8 +249,7 @@ describe("a patch only costs TTS for new or changed lines", () => {
         characterId: l.kind === "speech" ? (overrides.has(l.order) ? overrides.get(l.order)! : (speakers.get(l.text) ?? null)) : null,
       }));
     const clipKeys = (cues: ReturnType<typeof cuesOf>) =>
-      planClips({ chapterId: "ch", cues: cues as unknown as Cue[], recap: { text: "Recap." } }, cast as never, DEFAULT_PROFILES)
-        .filter((p) => p.cueId !== null)
+      planClips({ chapterId: "ch", cues: cues as unknown as Cue[] }, cast as never, DEFAULT_PROFILES)
         .map((p) => `${p.spec.voice}|${p.spec.style}|${p.text}`);
 
     const before = new Set(clipKeys(cuesOf(base, new Map())));
