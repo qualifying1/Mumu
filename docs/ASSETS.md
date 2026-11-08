@@ -76,3 +76,21 @@ Keep everything in one folder outside the repo (`~/fallhacks-assets/`). Lane C c
 - [ ] app icons 192/512/maskable
 - [ ] Mumu sounds (5)
 - [ ] CREDITS.md updated
+
+## 6. Mumu reference photos (`docs/asset_references/`)
+Photos of the real cat, used as **drawing reference only**. They are not sprite strips and must never go in `client/public/` (2160×2880 JPGs would bloat the precache). They are already committed in `docs/asset_references/` (identical to the source folder), so they are not copied a second time.
+
+| File | Useful for |
+|---|---|
+| `alert.jpg` | `exclaim` emote, alert/startled pose |
+| `shock.jpg` | `exclaim` emote, big-eyed surprise (`surprised` reactions) |
+| `loaf.jpg`, `loaf2.jpg` | `loaf` animation (paws tucked, body rounded) |
+| `sleepy.jpg` | `loaf` with the `zzz` emote, calm reactions |
+| `dead.jpg` | `loaf` / flopped-over pose, `zzz`, "sad" reactions |
+| `resting_lean.jpg` | `sit` and the resting lean against the shelf |
+| `rawr.jpg` | `meow` (mouth open), alarm meows |
+| `smile.jpg` | happy face, `tailwag`, petting reaction |
+| `ui_draft.jpg` | not a cat: the UI mood and layout target (see DESIGN.md) |
+
+## 7. Demo music (`client/public/audio/music/<mood>/1.mp3`)
+Only these moods have a real track for the demo (credits in `CREDITS.md`): `battle`, `tense` and `climax` (one track, copied three times) and `sad`. `calm`, `romance`, `comedic` and `mystery` have **no file**. The audio engine does not substitute another track: when a mood's file fails to load it reports an error (a visible reader error, never swallowed), marks that mood as broken so it does not retry, and music stays silent for that region. It does not crash. Either add the four files or keep demo regions to the four moods above.

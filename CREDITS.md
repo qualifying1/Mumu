@@ -13,6 +13,15 @@ Pages are used unmodified (the English version). The bubble boxes, voices and mu
 
 `fixtures/sample.json` is hand-written by us for ch1 pages 1–3 (cue text is transcribed from the pages). Its audio is generated sine beeps, not speech.
 
+## Music (`client/public/audio/music/`)
+
+| Files | Track | Author | License | Notes |
+|---|---|---|---|---|
+| `battle/1.mp3`, `tense/1.mp3`, `climax/1.mp3` | "Dark and Grim Epic Trailer (short)" | alex_besss | [Pixabay Content License](https://pixabay.com/service/license-summary/) (no attribution required, credited anyway) | One track, copied to three moods. Converted to mono 96 kbps, −5 dB. |
+| `sad/1.mp3` | "Sad Story" | alexgrohl | [Pixabay Content License](https://pixabay.com/service/license-summary/) (no attribution required, credited anyway) | Converted to mono 96 kbps, −5 dB, trimmed to 2:00 with a 3 s fade-out. |
+
+The moods `calm`, `romance`, `comedic` and `mystery` have no track for the demo (see docs/ASSETS.md).
+
 ## Still to add
 
 Audio, fonts, icons and Mumu art are placeholders for now. Record their sources and licenses here when they land.
