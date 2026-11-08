@@ -14,7 +14,7 @@ Data shapes and the Mumu bridge are in `CONTRACT.md`. The look of the app is in 
 2. **Add** tab: import chapter 1 → processing ("Mumu is reading the panels…").
 3. Read: distinct voices, the music shifts, SFX hit. Mumu reacts in the corner (sweating in tense scenes, hyped in fights).
 4. **Voices** tab: tune a voice profile and preview it (it affects only characters created afterwards).
-5. Open chapter 2: Mumu presents a "Previously…" bubble while the narrator voice plays the recap, and the characters keep their voices.
+5. Open chapter 2: the characters keep their voices. (No recap: the narrator voice only reads the on-screen narration captions.)
 6. With the reading limit set to 1 min in Profile, Mumu won't stop meowing until you take a break.
 7. Airplane mode: everything above still works.
 
@@ -27,7 +27,7 @@ Data shapes and the Mumu bridge are in `CONTRACT.md`. The look of the app is in 
 - Downscale pages to ≤ 800 px wide, POST them with the cast and all profiles, poll the job, then store the package in one transaction (CONTRACT §6).
 - Progress screen: one pixel-styled step per JobState with a check mark and the server's message, written in Mumu's voice (e.g. "Mumu is reading the panels…").
 - A failure shows the error text and a Retry button.
-- ✅ Chapter 1 goes from imported to ready; its cues, regions, audio, recap and new characters are stored.
+- ✅ Chapter 1 goes from imported to ready; its cues, regions, audio and new characters are stored.
 
 ## F3 Reader visuals
 - One continuous vertical strip at the viewport width. **Pages are not pixelated.** Remembers your scroll position per chapter.
@@ -87,7 +87,7 @@ Mumu is rendered at an **integer scale** of the sprite (×3 at ≥ 768 px wide, 
 | Scene reactions (Reader) | `setMood` changes (debounced 4 s) | calm → loaf · tense → sit + ❗ · mystery → sit + ❓ · battle → fast tail wag + ❗ · climax → tail wag + ✨ · romance → sit + 💗 · sad → loaf + 💧 · comedic → yarn |
 | Other tabs (Add, Voices, Profile) | screen is `other` | Floor = just above the bottom nav (`data-mumu-avoid`). Calmer idle life: walk, sit and loaf only. Mumu joins you everywhere. |
 | Reader parking | in the reader | Sits small in a corner (default bottom-right, outside the pages' bubbles). Drag to another corner and it remembers. No wandering. |
-| Recap | `showRecap` when opening chapter N > 1 | Mumu's bubble shows "Previously…" and while the narrator voice plays the recap. Dismissible. |
+| ~~Recap~~ | removed | There is no recap. Mumu shows no "Previously…" bubble. |
 | Long-reading alarm | continuous reading session ≥ `limitMinutes` | Mumu walks to bottom-centre and meows every 2.5 s (rotating meow1–3) with the bubble "Mrrow! Break time? (45 min)" and buttons **Take a break** (→ `onBreakRequested`, home, session reset) and **Snooze N min**. With master audio or Mumu sounds off: bubbles only. |
 | Hidden | Mumu visible = off | Nothing rendered; the timer still runs |
 | Reduced motion | `prefers-reduced-motion` | No wandering or climbing; sit/loaf only; drag still works |

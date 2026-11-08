@@ -115,7 +115,7 @@ describe("voiceChapter", () => {
     expect(pkg.cues.filter((c) => c.audioId !== null)).toHaveLength(5);
     expect(pkg.cues.find((c) => c.kind === "sfx")!.audioId).toBeNull();
     expect(pkg.cues.find((c) => c.text === "...")!.audioId).toBeNull();
-    expect(pkg.recap.audioId).toBe(recapAudioId("c1"));
+    expect(pkg.recap?.audioId).toBe(recapAudioId("c1")); // lane A: delete with the recap (CONTRACT §5)
     for (const clip of pkg.audio) {
       expect(clip.mime).toBe("audio/mpeg");
       expect(clip.durationMs).toBeGreaterThan(0);

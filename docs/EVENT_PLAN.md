@@ -61,7 +61,7 @@ If your free-tier RPD is below this, **enable billing now**. Set the concurrency
 | CP | Must be true | If not |
 |---|---|---|
 | **CP1** 10:55 | `npm run check` green; 3 worktrees started + installed | Worktree trouble that takes more than 10 minutes → **single-lane mode** (WORKFLOW). If you're overloaded, start Lane C only after I0. |
-| **CP2** 12:50 | Valid package with sane speakers + recap; reader plays the fixture; placeholder Mumu walks, drags and hangs; I0 boxes line up | Boxes misaligned → MAIN fixes the coordinate helper (30-min cap). Mumu behind → cut climb + yarn now. Any lane over 45 min late → apply rungs 1–3. |
+| **CP2** 12:50 | Valid package with sane speakers; reader plays the fixture; placeholder Mumu walks, drags and hangs; I0 boxes line up | Boxes misaligned → MAIN fixes the coordinate helper (30-min cap). Mumu behind → cut climb + yarn now. Any lane over 45 min late → apply rungs 1–3. |
 | **CP3** 15:30 | A4 works locally; B4 + C4 done; at least walk/sit/held/loaf/tailwag are real art | Deploy failing → demo locally. TTS quota → billing. Art missing → keep the placeholders for missing animations and remove those behaviours from the demo script. |
 | **CP4** 16:45 | Demo story steps 1–7 (SPEC) work on the laptop | Cut whatever fails from the demo script. **Don't build past 17:00.** |
 
@@ -70,7 +70,7 @@ If your free-tier RPD is below this, **enable billing now**. Set the concurrency
 2. Mumu **climb**, then **yarn**
 3. `/preview` endpoint (the Voices tab still tunes voices; preview the cast's stored lines instead)
 4. Profile avatar upload (keep Mumu's face)
-5. Recap
+5. (Recap: removed from the product)
 6. Deployed backend (demo locally + video)
 7. Music crossfade (switch to a hard cut), then SFX
 - **Never cut:** offline reading · distinct character voices + one music bed · ch2 voice consistency · Mumu walk/sit/loaf on the desk, drag + swing, pet, scene reactions, read-time bubble, meow alarm.
@@ -152,7 +152,7 @@ We assumed the project failed and asked why. Each cause is prevented somewhere i
 | Early submission forgotten | 13:00 alarm, a run-sheet row, the TASKS row |
 | Video recorded too late or fails | Freeze at 16:45, recording starts at 17:00, storyboard prepared, OBS installed early |
 | Piracy question from the judges | Demo uses CC BY content; positioning in PLAN §2/§14 |
-| Theme fit unclear to judges | Mumu is the digital sidekick: in the demo story, the copy, the Devpost text, and the recap voice |
+| Theme fit unclear to judges | Mumu is the digital sidekick: in the demo story, the copy, the Devpost text, and the narrator voice |
 | Tooling broken on your machine | Part 1 track 1 step 2 checks the skills and agents before any build |
 
 **Remaining risks** (accepted, with a fallback):

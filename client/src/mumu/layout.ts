@@ -20,11 +20,20 @@ export const READER_PARK_MARGIN_PX = 8;
 
 export type WorldScreen = "home" | "reader" | "other";
 
+/** The reader corners Mumu can sit in: the bottom of the screen, left or right. */
+export type ParkCorner = "left" | "right";
+export const DEFAULT_PARK_CORNER: ParkCorner = "right";
+
+/** The corner a drag ended in: the half of the screen it was dropped on. */
+export function cornerForDrop(x: number, viewportWidth: number): ParkCorner {
+  return x < viewportWidth / 2 ? "left" : "right";
+}
+
 /**
  * The world for a screen (F8):
  * - home: the `data-mumu-floor` element (desk); with none, the bottom of the screen above any nav.
  * - other: the bottom of the screen just above the `data-mumu-avoid` element (bottom nav).
- * - reader: the bottom of the screen; `parkX` is the bottom-right corner, where Mumu sits.
+ * - reader: the bottom of the screen; `parkX` is the chosen bottom corner (default right), where Mumu sits.
  */
 export function worldForScreen(opts: {
   screen: WorldScreen;
@@ -32,13 +41,14 @@ export function worldForScreen(opts: {
   avoid: RectLike | null;
   viewport: { width: number; height: number };
   scale: number;
+  corner?: ParkCorner;
 }): { world: World; parkX: number | null } {
-  const { screen, floor, avoid, viewport, scale } = opts;
+  const { screen, floor, avoid, viewport, scale, corner = DEFAULT_PARK_CORNER } = opts;
   const bottom = avoid ? avoid.top : viewport.height;
   if (screen === "home" && floor) return { world: worldFromFloor(floor, viewport, scale), parkX: null };
   if (screen === "reader") {
-    const world = worldFromFloor({ left: 0, right: viewport.width - READER_PARK_MARGIN_PX, top: viewport.height }, viewport, scale);
-    return { world, parkX: world.maxX };
+    const world = worldFromFloor({ left: READER_PARK_MARGIN_PX, right: viewport.width - READER_PARK_MARGIN_PX, top: viewport.height }, viewport, scale);
+    return { world, parkX: corner === "left" ? world.minX : world.maxX };
   }
   return { world: worldFromFloor({ left: 0, right: viewport.width, top: bottom }, viewport, scale), parkX: null };
 }

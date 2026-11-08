@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mumuScale, playfieldFor, READER_PARK_MARGIN_PX, worldForScreen, worldFromFloor } from "./layout.ts";
+import { cornerForDrop, mumuScale, playfieldFor, READER_PARK_MARGIN_PX, worldForScreen, worldFromFloor } from "./layout.ts";
 import { ANIM_NAMES, frameAt, isMirrored, SPRITES } from "./sprites.ts";
 
 describe("mumuScale", () => {
@@ -60,6 +60,21 @@ describe("worldForScreen", () => {
     expect(parkX).toBe(world.maxX);
     // sprite (64 px) ends READER_PARK_MARGIN_PX from the right edge
     expect(parkX! + 32).toBe(400 - READER_PARK_MARGIN_PX);
+  });
+
+  it("the reader can park in the bottom-left corner instead, with the same margin", () => {
+    const { world, parkX } = worldForScreen({ screen: "reader", floor: desk, avoid: nav, viewport, scale: 2, corner: "left" });
+    expect(parkX).toBe(world.minX);
+    expect(parkX! - 32).toBe(READER_PARK_MARGIN_PX);
+  });
+});
+
+describe("cornerForDrop", () => {
+  it("picks the corner on the half of the screen where Mumu was dropped", () => {
+    expect(cornerForDrop(50, 400)).toBe("left");
+    expect(cornerForDrop(199, 400)).toBe("left");
+    expect(cornerForDrop(200, 400)).toBe("right");
+    expect(cornerForDrop(380, 400)).toBe("right");
   });
 });
 

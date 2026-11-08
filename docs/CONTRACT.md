@@ -30,7 +30,7 @@ This is the single source of truth. M1 turns it into `shared/` (types + zod) plu
 |---|---|---|
 | `id` | string | `<slot>_1`, `<slot>_2` or `<slot>_3` |
 | `slot` | VoiceSlot | |
-| `label` | string | e.g. "Young Hero A". `narrator_1` is labelled "Narrator" and is the narrator voice. **It is not Mumu**: Mumu only presents the recap bubble. |
+| `label` | string | e.g. "Young Hero A". `narrator_1` is labelled "Narrator" and is the narrator voice. **It is not Mumu**: Mumu never speaks lines. |
 | `voice` | string | Provider voice name |
 | `style` | string | Default delivery style |
 | `speed` | number | 0.8–1.2. Applied in the ffmpeg encode step (§9), not by the TTS model. |
@@ -49,7 +49,7 @@ This is the single source of truth. M1 turns it into `shared/` (types + zod) plu
 | `firstSeenChapterId` | string | |
 
 - **Casting rule** (code, not an LLM): for a new character, take the first of `<slot>_1`, `<slot>_2`, `<slot>_3` that this series' cast isn't already using; if all three are used, take `<slot>_1`. Set `profileId` to that profile and `voice` to its snapshot (`snapshotVoice`). **The server never modifies existing characters.**
-- **Voice resolution for TTS:** `speech`/`thought` lines with a character use that character's **`voice` snapshot**, never the live profile table. Lines with an unknown speaker, `narration`, and the chapter recap use the `narrator_1` profile from `meta.profiles` (the narrator voice).
+- **Voice resolution for TTS:** `speech`/`thought` lines with a character use that character's **`voice` snapshot**, never the live profile table. Lines with an unknown speaker and `narration` captions use the `narrator_1` profile from `meta.profiles` (the narrator voice). **Every on-screen narration caption is read aloud by the narrator voice** as it crosses the read line. There is **no recap**: nothing summarizes or replays a previous chapter.
 - **A chapter is voiced exactly once, at processing time, and a character keeps its voice forever through its id.** Editing a profile affects only characters created afterwards. Editing one character's voice affects future chapters only. Already-generated audio is never regenerated.
 
 ## 4. HTTP API (server, port 8787)
@@ -74,8 +74,8 @@ This is the single source of truth. M1 turns it into `shared/` (types + zod) plu
 | `newCharacters` | Character[] | Only characters created by this job. The client adds them to the cast. |
 | `cues` | Cue[] | Sorted by `order` |
 | `regions` | Region[] | Contiguous, covering the chapter from the first cue to the last |
-| `recap` | `{ text, audioId }` | 2–3 sentences about **this** chapter, voiced by the narrator voice. Played when the next chapter opens, while Mumu presents the "Previously…" bubble. |
-| `audio` | AudioClip[] | One per voiced cue, plus one for the recap |
+| `recap` | removed | **Deprecated, optional, ignored.** There is no recap. It stays optional in the schema only so old packages still parse. Nothing produces or plays it. |
+| `audio` | AudioClip[] | One per voiced cue |
 
 **Cue:** `id`, `order` (int), `kind`, `pageIndex`, `box`, `text`, `characterId` (string or null), `emotion`, `delivery`, `audioId` (string or null; null for `sfx` and for text with no letters or digits), `sfxTag` (`sfx` only; null means no matching sound).
 **Region:** `{ id, start: { pageIndex, y }, end: { pageIndex, y }, mood, intensity }`
@@ -89,14 +89,14 @@ The schema lives in `client/src/db/db.ts`. It's part of the contract, so only MA
 | `series` | `id` | `title`, `coverPageId`, `createdAt` |
 | `characters` | `id` | Character fields; index `seriesId` |
 | `profiles` | `id` | VoiceProfile fields. Seeded from the roster on first run. |
-| `chapters` | `id` | `seriesId`, `number`, `title`, `pageCount`, `status` (`imported`/`processing`/`ready`/`failed`), `jobId?`, `error?`, `lastReadY?`, `processedAt?`, `recapText?`, `recapAudioId?` |
+| `chapters` | `id` | `seriesId`, `number`, `title`, `pageCount`, `status` (`imported`/`processing`/`ready`/`failed`), `jobId?`, `error?`, `lastReadY?`, `processedAt?` (`recapText?` and `recapAudioId?` are deprecated and unused) |
 | `pages` | `id` | `chapterId`, `index`, `blob`, `width`, `height` |
 | `cues` / `regions` | `id` | the fields above + `chapterId` |
 | `audio` | `id` | `chapterId`, `blob`, `durationMs` |
 | `readingLog` | `date` (`YYYY-MM-DD`) | `seconds` |
 | `settings` | `key` | `theme` (`day`/`night`/`system`); `audio` (`master`/`voices`/`music`/`sfx`, each `{on, volume}`); `profile` (`{ name, avatarBlob? }`); `wellbeing` (`{ limitMinutes: 45, snoozeMinutes: 10 }`, where `limitMinutes: 0` means off); `mumu` (`{ visible: true, sounds: true }`); `debugOverlay` (bool) |
 
-Storing a package is **one transaction**: replace the chapter's cues, regions and audio; add `newCharacters`; save the recap; set the status to `ready`. The import flow and the `/dev` loader use the same function.
+Storing a package is **one transaction**: replace the chapter's cues, regions and audio; add `newCharacters`; set the status to `ready`. The import flow and the `/dev` loader use the same function.
 
 ## 7. Bundled assets (client, no API)
 - Music: `client/public/audio/music/<mood>/1.mp3` · SFX: `client/public/audio/sfx/<sfxTag>.mp3`
@@ -133,7 +133,7 @@ Writes are atomic (temp file, then rename). Bump the prompt version whenever a p
 | B (screens) | `setScreen(screen)` | `'home' \| 'reader' \| 'other'` |
 | B (audio engine) | `setMood(mood \| null)` | The region mood at the read line; `null` outside the reader |
 | B (reader) | `notifyActivity()` | Call on each scroll or tap in the reader. Feeds the reading timer's idle detection. |
-| B (reader open) | `showRecap({ text, audioUrl })` | Mumu presents the previous chapter's recap |
+| ~~B (reader open)~~ | ~~`showRecap`~~ | **Deprecated, there is no recap.** Don't call it. Lane C removes the recap bubble; MAIN then deletes `showRecap` from the bridge. |
 | B (reader) | `onBreakRequested(cb)` | Mumu's "Take a break" button asks the app to leave the reader |
 | C | `subscribe(listener)` | MumuLayer listens to everything above |
 

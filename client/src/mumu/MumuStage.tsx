@@ -2,8 +2,9 @@
 // Used by the app-wide MumuLayer and by MumuLab. The layer around it is `pointer-events: none`;
 // only the sprite element takes pointer events (rule: Mumu never blocks scrolling).
 import type { CSSProperties } from "react";
-import { EMOTE_LIFE_S } from "./constants.ts";
 import MumuSprite from "./MumuSprite.tsx";
+import { RECAP_TITLE } from "./recap.ts";
+import type { ActiveRecap } from "./useMumuRecap.ts";
 import { usePointerGestures } from "./usePointerGestures.ts";
 import type { useMumuEngine } from "./useMumuEngine.ts";
 
@@ -16,7 +17,35 @@ function emoteUrl(name: string): string {
   return `${import.meta.env.BASE_URL}mumu/emotes/${name}.png`;
 }
 
-export default function MumuStage({ engine }: { engine: Engine }) {
+/** The long-reading alarm bubble: the limit in the text, a hint to pet Mumu (that snoozes), and a way to actually take the break. */
+export interface AlarmBubble {
+  limitMinutes: number;
+  snoozeMinutes: number;
+  onBreak: () => void;
+}
+
+const BUTTON_STYLE: CSSProperties = {
+  minHeight: 36,
+  padding: "4px 10px",
+  background: "Canvas",
+  color: "CanvasText",
+  border: "2px solid CanvasText",
+  boxShadow: "0 2px 0 CanvasText",
+  font: "inherit",
+  whiteSpace: "nowrap",
+  cursor: "pointer",
+  touchAction: "manipulation",
+};
+
+/** The "Previously…" bubble: the chapter recap while the narrator voice plays. Dismissible. */
+export interface RecapBubble {
+  recap: ActiveRecap;
+  onDismiss: () => void;
+}
+
+const RECAP_WIDTH = 260;
+
+export default function MumuStage({ engine, alarm = null, recap = null }: { engine: Engine; alarm?: AlarmBubble | null; recap?: RecapBubble | null }) {
   const { state, scale, field, bubble, dispatch } = engine;
   const handlers = usePointerGestures(dispatch);
   const size = field.size;
@@ -55,7 +84,7 @@ export default function MumuStage({ engine }: { engine: Engine }) {
         {...handlers}
       />
       {state.emotes.map((e) => {
-        const t = e.age / EMOTE_LIFE_S;
+        const t = e.age / e.life;
         const px = EMOTE_SIZE * scale;
         const style: CSSProperties = {
           position: "fixed",
@@ -70,10 +99,49 @@ export default function MumuStage({ engine }: { engine: Engine }) {
         };
         return <img key={e.id} src={emoteUrl(e.kind)} alt="" draggable={false} data-mumu-emote={e.kind} style={style} />;
       })}
-      {bubble && (
-        <div key={bubble.id} role="status" data-mumu-bubble style={bubbleStyle}>
-          {bubble.text}
+      {alarm ? (
+        // Mumu is clinging in the middle of the page. The bubble itself ignores pointers (the page stays usable around it);
+        // only its one button takes them. Petting Mumu is how you snooze.
+        <div role="alertdialog" aria-label="Break time" data-mumu-alarm style={{ ...bubbleStyle, maxWidth: 260 }}>
+          <div>Mrrow! Break time? ({alarm.limitMinutes} min)</div>
+          <div style={{ opacity: 0.75, marginTop: 2 }}>Pet me to snooze {alarm.snoozeMinutes} min</div>
+          <div style={{ marginTop: 8 }}>
+            <button type="button" data-mumu-break style={{ ...BUTTON_STYLE, pointerEvents: "auto" }} onClick={alarm.onBreak}>
+              Take a break
+            </button>
+          </div>
         </div>
+      ) : recap ? (
+        // Mumu in its reader corner presents the recap. Only the Skip button takes pointers; the page stays usable around it.
+        <div
+          key={recap.recap.id}
+          role="status"
+          data-mumu-recap
+          style={{
+            ...bubbleStyle,
+            left: Math.round(Math.min(Math.max(state.x, RECAP_WIDTH / 2 + 8), Math.max(RECAP_WIDTH / 2 + 8, window.innerWidth - RECAP_WIDTH / 2 - 8))),
+            width: RECAP_WIDTH,
+            maxWidth: `calc(100vw - 16px)`,
+            maxHeight: "50vh",
+            overflowY: "auto",
+            textAlign: "left",
+          }}
+        >
+          <div style={{ fontWeight: "bold" }}>{RECAP_TITLE}</div>
+          <div style={{ marginTop: 2 }}>{recap.recap.text}</div>
+          {recap.recap.audioFailed && <div style={{ opacity: 0.75, marginTop: 4 }}>(I couldn&apos;t play the narrator&apos;s voice.)</div>}
+          <div style={{ marginTop: 8, textAlign: "right" }}>
+            <button type="button" data-mumu-recap-dismiss style={{ ...BUTTON_STYLE, pointerEvents: "auto" }} onClick={recap.onDismiss}>
+              Skip
+            </button>
+          </div>
+        </div>
+      ) : (
+        bubble && (
+          <div key={bubble.id} role="status" data-mumu-bubble style={bubbleStyle}>
+            {bubble.text}
+          </div>
+        )
       )}
     </>
   );

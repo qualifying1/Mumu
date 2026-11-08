@@ -37,7 +37,8 @@ function TabLayout() {
   return (
     <>
       <Outlet />
-      {pathname === "/" && (
+      {/* Home fills the screen exactly, so the M0 health line lives on the Add tab (dev only). */}
+      {import.meta.env.DEV && pathname === "/add" && (
         <p data-testid="health" className="px-6 text-xs opacity-60">
           /health: {health.status === "error" ? `error — ${health.message}` : health.status}
         </p>

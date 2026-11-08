@@ -29,10 +29,9 @@ describe("packageToRows", () => {
     });
   });
 
-  it("carries the recap and new characters", () => {
-    expect(rows.recapText).toBe(pkg.recap.text);
-    expect(rows.recapAudioId).toBe(pkg.recap.audioId);
+  it("carries the new characters and no recap", () => {
     expect(rows.characters).toEqual(pkg.newCharacters);
-    expect(rows.audio.some((a) => a.id === rows.recapAudioId)).toBe(true);
+    expect(rows.recapText).toBeUndefined();
+    expect(rows.recapAudioId).toBeUndefined();
   });
 });

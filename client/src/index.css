@@ -1,1 +1,97 @@
 @import "tailwindcss";
+
+/* Night theme = the `dark` class on <html> (docs/DESIGN.md). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@font-face {
+  font-family: "Pixelify Sans";
+  src: url("/fonts/pixelify-sans.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Press Start 2P";
+  src: url("/fonts/press-start-2p.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
+/* Palette tokens (docs/DESIGN.md, chosen in docs/DECISIONS.md). Day values; `.dark` overrides below. */
+@theme {
+  --font-sans: "Pixelify Sans", ui-monospace, monospace;
+  --font-title: "Press Start 2P", "Pixelify Sans", monospace;
+
+  --color-wall: #e9d3a8;
+  --color-wall-dark: #d6b985;
+  --color-wood-light: #b7783f;
+  --color-wood-dark: #7a4a25;
+  --color-paper: #fff3d6;
+  --color-ink: #2b1d14;
+  --color-ink-muted: #6b5240;
+  --color-accent: #b4431a;
+  --color-on-accent: #fff7e6;
+  --color-glow: #ffd479;
+
+  --color-mood-calm: #7fb8a4;
+  --color-mood-tense: #c9a227;
+  --color-mood-battle: #c0392b;
+  --color-mood-climax: #8e44ad;
+  --color-mood-romance: #e07a9b;
+  --color-mood-sad: #5b7fa8;
+  --color-mood-comedic: #e8a33d;
+  --color-mood-mystery: #3f4a7a;
+}
+
+.dark {
+  --color-wall: #2a1f2d;
+  --color-wall-dark: #1e1621;
+  --color-wood-light: #8a5530;
+  --color-wood-dark: #4f2f18;
+  --color-paper: #3a2c33;
+  --color-ink: #f6e7c8;
+  --color-ink-muted: #c4ad8c;
+  --color-accent: #f08a3c;
+  --color-on-accent: #1b1410;
+  --color-glow: #ffb347;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background: var(--color-wall);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  /* Pixel UI text is crisp, not smoothed. */
+  -webkit-font-smoothing: none;
+}
+
+/* Stepped-corner "pixel" frame: a 4 px border drawn with box-shadows, no border-radius (docs/DESIGN.md). */
+.pixel-frame {
+  --frame: var(--color-ink);
+  box-shadow:
+    4px 0 0 0 var(--frame),
+    -4px 0 0 0 var(--frame),
+    0 4px 0 0 var(--frame),
+    0 -4px 0 0 var(--frame);
+}
+
+/* Integer-scaled pixel art: canvases and sprites are never smoothed. */
+.pixelated {
+  image-rendering: pixelated;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pixel-bounce {
+    animation: pixel-bounce 0.15s steps(2, end) 1;
+  }
+}
+@keyframes pixel-bounce {
+  50% {
+    transform: translateY(-1px);
+  }
+}
