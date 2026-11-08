@@ -23,4 +23,6 @@ export default defineConfig({
     }),
   ],
   server: { port: 5173 },
+  // The long simulated-life tests (Mumu's engine) take ~6 s on a slow machine; the 5 s default makes them flaky.
+  test: { testTimeout: 30_000 },
 });
