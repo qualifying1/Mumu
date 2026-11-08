@@ -12,11 +12,12 @@ import {
   RIDE_SPEED_PX_S,
 } from "./constants.ts";
 import { createMumuState, step, type EngineInput, type MumuState, type Rng } from "./engine.ts";
+import { HELD_REACH } from "./sprites.ts";
 import type { MumuAction } from "./gesture.ts";
 import type { Playfield, World } from "./layout.ts";
 
 const FRAME = 1 / 60;
-const SIZE = 64;
+const SIZE = 64; // two sprite scale x2
 const bounds = { left: 0, right: 390, top: 0, bottom: 800 };
 
 interface Screen {
@@ -156,14 +157,14 @@ describe("being picked up and put down", () => {
     // The pointer is a sprite away from where Mumu would hang by the scruff.
     const target = { x: s0.x + 90, y: s0.y - 120 };
     const first = act(s0, [{ type: "grab", x: target.x, y: target.y }]);
-    const dist = Math.hypot(target.x - s0.x, target.y + SIZE - s0.y);
+    const dist = Math.hypot(target.x - s0.x, target.y + SIZE * HELD_REACH - s0.y);
     const moved = Math.hypot(first.x - s0.x, first.y - s0.y);
     expect(moved).toBeGreaterThan(0);
     expect(moved).toBeLessThan(dist * 0.6);
     let s = first;
     for (let i = 0; i < 60; i++) s = act(s, []);
     expect(s.x).toBe(target.x);
-    expect(s.y).toBe(target.y + SIZE);
+    expect(s.y).toBe(target.y + SIZE * HELD_REACH);
   });
 
   it("the glide closes the gap at the documented rate", () => {
@@ -219,7 +220,7 @@ describe("random life", () => {
         const actions: MumuAction[] = [];
         if (drag === 0 && driver() < 1 / 2000) {
           // pick up where the sprite is, then wander the pointer at <= 20 px a frame for up to a second
-          ptr = { x: s.x, y: s.y - SIZE };
+          ptr = { x: s.x, y: s.y - SIZE * HELD_REACH };
           actions.push({ type: "grab", x: ptr.x, y: ptr.y });
           drag = 20 + Math.floor(driver() * 40);
         } else if (drag > 0) {
@@ -237,5 +238,5 @@ describe("random life", () => {
       }
       expect(maxMove).toBeGreaterThan(0);
     }
-  });
+  }, 60_000); // 3 x 72k frames: slow when the whole suite runs in parallel
 });

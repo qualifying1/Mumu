@@ -1,7 +1,7 @@
 // Thin renderer: draws one frame of a horizontal strip at an integer scale, pixelated, mirrored when facing left.
 // Positioning is by feet: (x, floorY) is the bottom centre of the sprite.
 import type { CSSProperties, HTMLAttributes } from "react";
-import { FRAME_SIZE, SPRITES, frameAt, isMirrored, spriteUrl, type AnimName } from "./sprites.ts";
+import { FRAME_SIZE, SPRITES, frameAt, frameHeight, isMirrored, spriteUrl, type AnimName } from "./sprites.ts";
 
 export interface MumuSpriteProps extends Omit<HTMLAttributes<HTMLDivElement>, "style"> {
   anim: AnimName;
@@ -25,16 +25,17 @@ export default function MumuSprite({ anim, animTime, facing, scale, x, floorY, r
   const def = SPRITES[anim];
   const frame = frameAt(def, animTime);
   const size = FRAME_SIZE * scale;
+  const height = frameHeight(def) * scale;
   const mirrored = isMirrored(anim, facing);
   const style: CSSProperties = {
     position: "fixed",
     zIndex: 50,
     left: Math.round(x - size / 2),
-    top: Math.round(floorY - size),
+    top: Math.round(floorY - height),
     width: size,
-    height: size,
+    height,
     backgroundImage: `url(${spriteUrl(anim)})`,
-    backgroundSize: `${def.frames * size}px ${size}px`,
+    backgroundSize: `${def.frames * size}px ${height}px`,
     backgroundPosition: `${-frame * size}px 0`,
     backgroundRepeat: "no-repeat",
     imageRendering: "pixelated",

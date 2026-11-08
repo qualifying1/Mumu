@@ -32,7 +32,7 @@ Times assume **M0 starts at 10:00**. If you start later, shift the lane rows and
 | I1 | MAIN | 15:30–15:50 | A4, B4, C4 | **End-to-end ch1**, local then deployed. Stop any lane's servers first. | Add → process → read with voices, Mumu reacting; same on the deployed URLs. | todo |
 | A5 | A | 15:20–16:00 | A4 | **Harden on ch2:** `npm run fixture -- fixtures/ch2 --cast fixtures/out/ch1.json`; confirm deployed env and CORS (with you). | ch2 reuses ch1's character ids. Paste the transcript. | todo |
 | B5 | B | 15:50–16:30 | I1 | **Profile tab (F7) + PWA offline (F9) + pixel polish pass.** | Production-preview airplane test (recording). | todo |
-| C5 | C | 15:20–16:15 | C4 | **Real art swap-in + polish:** replace placeholders as the art lands (update frame counts in `sprites.ts` only), tune timings, check the Home desk and ledges. | Every F8 row demoed on the demo device (recording). | todo |
+| C5 | C | 15:20–16:15 | C4 | **Real art swap-in + polish:** replace placeholders as the art lands (update frame counts in `sprites.ts` only), tune timings, check the Home desk and ledges. | Every F8 row demoed on the demo device (recording). | done |
 | I2 | MAIN | 16:15–16:40 | I1, A5, B5, C5 | **Chapter 2 + full demo run.** Process ch2, check voice reuse, tune a profile (only new characters pick it up), alarm at a 1-min limit. | Demo story steps 1–7 (SPEC) pass on the demo device. | todo |
 | P1 | MAIN | **16:45** | I2 | **FREEZE.** `/ship`; pre-process demo chapters in the demo origin. | `/ship` checklist all green | todo |
 | V1 | YOU | 17:00–18:15 | P1 | Video, README, screenshots, final submission | Submitted by 18:15 | todo |
